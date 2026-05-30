@@ -6,12 +6,15 @@
   "engines": {
     "node": ">=20"
   },
+  "packageManager": "pnpm@10.33.0",
   "scripts": {
     "lint": "gts lint && node scripts/check-unicode.mjs",
     "lint:unicode": "node scripts/check-unicode.mjs",
     "fix": "gts fix",
     "build": "pnpm -r build",
-    "clean": "gts clean && pnpm -r clean"
+    "clean": "gts clean && pnpm -r clean",
+    "up": "docker compose up --build",
+    "down": "docker compose down"
   },
   "devDependencies": {
     "gts": "^5.3.1",
