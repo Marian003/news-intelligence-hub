@@ -1,0 +1,4 @@
+# Normalize line endings to LF in the repository for every text file, so the
+# tree is byte-identical across Windows/macOS/Linux checkouts and the Unicode
+# scan and lint behave the same everywhere.
+* text=auto eol=lf

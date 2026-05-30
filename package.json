@@ -1,0 +1,20 @@
+{
+  "name": "news-intelligence-hub",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Multi-user app that turns RSS/Atom feeds into a per-user entity relationship graph.",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "lint": "gts lint && node scripts/check-unicode.mjs",
+    "lint:unicode": "node scripts/check-unicode.mjs",
+    "fix": "gts fix",
+    "build": "pnpm -r build",
+    "clean": "gts clean && pnpm -r clean"
+  },
+  "devDependencies": {
+    "gts": "^5.3.1",
+    "typescript": "~5.5.4"
+  }
+}

@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+*.tsbuildinfo
+
+# Local environment — secrets live here, never committed
+.env
+.env.local
+*.local
+
+# Logs
+*.log
+logs/
+
+# Test / coverage artifacts
+coverage/
+
+# Editor / OS noise
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# Claude Code local harness state (personal permission grants, not project config)
+.claude/

@@ -1,0 +1,4 @@
+# Whole-stack orchestration. Milestone 1 ships this skeleton intentionally empty;
+# services (postgres, redis, backend, workers, frontend, bull-board) are added in
+# the milestones that introduce them, so each addition is a reviewable change.
+services: {}
