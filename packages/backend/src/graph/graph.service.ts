@@ -2,11 +2,17 @@ import {Inject, Injectable} from '@nestjs/common';
 import {and, desc, eq, inArray, sql} from 'drizzle-orm';
 import type {GraphEdge, GraphNode, GraphPayload, Importance} from '@nih/shared';
 import {DRIZZLE, type DrizzleDb} from '../database/database.module';
-import {articleEntities, articles, entities} from '../database/schema';
+import {
+  articleCategories,
+  articleEntities,
+  articles,
+  entities,
+} from '../database/schema';
 
 export interface GraphQuery {
   nodeTypes: Array<'article' | 'entity'>;
   importance?: Importance[];
+  categoryId?: string;
   limit: number;
 }
 
@@ -36,6 +42,15 @@ export class GraphService {
           eq(articles.status, 'processed'),
           query.importance
             ? inArray(articles.importance, query.importance)
+            : undefined,
+          query.categoryId
+            ? inArray(
+                articles.id,
+                this.db
+                  .select({id: articleCategories.articleId})
+                  .from(articleCategories)
+                  .where(eq(articleCategories.categoryId, query.categoryId))
+              )
             : undefined
         )
       )

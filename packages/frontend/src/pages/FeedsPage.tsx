@@ -1,0 +1,128 @@
+import {useState} from 'react';
+import {Badge, Button, ErrorNote, Spinner, useAsync} from '../components/ui';
+import {api, type Feed} from '../lib/api';
+
+function when(iso: string | null): string {
+  return iso ? new Date(iso).toLocaleString() : 'never';
+}
+
+export function FeedsPage() {
+  const feeds = useAsync(() => api.feeds.list(), []);
+  const [url, setUrl] = useState('');
+  const [title, setTitle] = useState('');
+  const [error, setError] = useState<string | null>(null);
+
+  const add = async () => {
+    setError(null);
+    try {
+      await api.feeds.create(url.trim(), title.trim() || undefined);
+      setUrl('');
+      setTitle('');
+      feeds.reload();
+    } catch (err) {
+      setError((err as Error).message);
+    }
+  };
+
+  const run = async (action: Promise<unknown>) => {
+    await action;
+    feeds.reload();
+  };
+
+  return (
+    <div className="space-y-5">
+      <h1 className="text-xl font-semibold text-slate-900">Feeds</h1>
+
+      <div className="rounded-lg border bg-white p-4">
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <input
+            className="flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm"
+            placeholder="https://example.com/feed.xml"
+            value={url}
+            onChange={e => setUrl(e.target.value)}
+          />
+          <input
+            className="rounded-md border border-slate-300 px-3 py-2 text-sm sm:w-48"
+            placeholder="Title (optional)"
+            value={title}
+            onChange={e => setTitle(e.target.value)}
+          />
+          <Button onClick={add} disabled={!url.trim()}>
+            Add feed
+          </Button>
+        </div>
+        {error && (
+          <div className="mt-2">
+            <ErrorNote message={error} />
+          </div>
+        )}
+      </div>
+
+      {feeds.loading ? (
+        <Spinner />
+      ) : feeds.error ? (
+        <ErrorNote message={feeds.error} />
+      ) : feeds.data && feeds.data.length > 0 ? (
+        <ul className="space-y-2">
+          {feeds.data.map(feed => (
+            <FeedRow key={feed.id} feed={feed} onAction={run} />
+          ))}
+        </ul>
+      ) : (
+        <p className="text-sm text-slate-500">No feeds yet. Add one above.</p>
+      )}
+    </div>
+  );
+}
+
+function FeedRow({
+  feed,
+  onAction,
+}: {
+  feed: Feed;
+  onAction: (action: Promise<unknown>) => void;
+}) {
+  return (
+    <li className="rounded-lg border bg-white p-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <Badge kind="status" value={feed.status} />
+        <span className="font-medium text-slate-900">
+          {feed.title ?? feed.url}
+        </span>
+        <span className="ml-auto flex gap-1">
+          <Button
+            variant="ghost"
+            onClick={() => onAction(api.feeds.refresh(feed.id))}
+          >
+            Poll now
+          </Button>
+          <Button
+            variant="ghost"
+            onClick={() =>
+              onAction(
+                api.feeds.update(feed.id, {
+                  status: feed.status === 'paused' ? 'active' : 'paused',
+                })
+              )
+            }
+          >
+            {feed.status === 'paused' ? 'Activate' : 'Pause'}
+          </Button>
+          <Button
+            variant="danger"
+            onClick={() => onAction(api.feeds.remove(feed.id))}
+          >
+            Delete
+          </Button>
+        </span>
+      </div>
+      <div className="mt-1 truncate text-xs text-slate-400">{feed.url}</div>
+      <div className="mt-1 text-xs text-slate-500">
+        Last polled: {when(feed.lastPolledAt)}
+        {feed.lastError && (
+          <span className="ml-2 text-red-600">· {feed.lastError}</span>
+        )}
+      </div>
+    </li>
+  );
+}

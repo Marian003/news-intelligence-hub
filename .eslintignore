@@ -2,3 +2,7 @@ node_modules
 dist
 build
 coverage
+
+# Build-tool config files that are ESM .js (gts lints .js as scripts).
+packages/frontend/tailwind.config.js
+packages/frontend/postcss.config.js

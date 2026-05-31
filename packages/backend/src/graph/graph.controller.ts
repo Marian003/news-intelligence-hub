@@ -58,11 +58,13 @@ export class GraphController {
     @CurrentUser() user: AuthedUser,
     @Query('nodeTypes') nodeTypes?: string,
     @Query('importance') importance?: string,
+    @Query('categoryId') categoryId?: string,
     @Query('limit', new DefaultValuePipe(200), ParseIntPipe) limit = 200
   ): Promise<GraphPayload> {
     return this.graph.buildGraph(user.userId, {
       nodeTypes: parseNodeTypes(nodeTypes),
       importance: parseImportance(importance),
+      categoryId: categoryId || undefined,
       limit: Math.min(Math.max(limit, 1), 1000),
     });
   }

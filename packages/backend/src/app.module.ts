@@ -1,6 +1,7 @@
 import {Module} from '@nestjs/common';
 import {ConfigModule} from '@nestjs/config';
 import {validateEnv} from './config/env.validation';
+import {ArticlesModule} from './articles/articles.module';
 import {AuthModule} from './auth/auth.module';
 import {AxesModule} from './axes/axes.module';
 import {CategoriesModule} from './categories/categories.module';
@@ -28,6 +29,7 @@ import {HealthModule} from './health/health.module';
     FeedsModule,
     CategoriesModule,
     AxesModule,
+    ArticlesModule,
     EntitiesModule,
     GraphModule,
   ],

@@ -59,7 +59,7 @@ export class AuthService {
     await this.axes.seedForUser(user.id);
 
     const baseUrl = this.config.getOrThrow<string>('APP_PUBLIC_URL');
-    const confirmationUrl = `${baseUrl}/auth/confirm?token=${confirmationToken}`;
+    const confirmationUrl = `${baseUrl}/confirm?token=${confirmationToken}`;
     // No SMTP in dev: the link is always written to the service log, tagged so
     // it is easy to find, and also returned (outside production) for the UI.
     this.logger.log(
