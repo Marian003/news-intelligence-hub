@@ -2,6 +2,7 @@ import {Module} from '@nestjs/common';
 import {ConfigModule} from '@nestjs/config';
 import {validateEnv} from './config/env.validation';
 import {DatabaseModule} from './database/database.module';
+import {LlmModule} from './llm/llm.module';
 import {QueueModule} from './queue/queue.module';
 import {WorkersModule} from './workers/workers.module';
 
@@ -15,6 +16,7 @@ import {WorkersModule} from './workers/workers.module';
     ConfigModule.forRoot({isGlobal: true, validate: validateEnv}),
     DatabaseModule,
     QueueModule,
+    LlmModule,
     WorkersModule,
   ],
 })

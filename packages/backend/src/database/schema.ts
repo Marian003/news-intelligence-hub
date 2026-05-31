@@ -1,6 +1,9 @@
+import {ENTITY_TYPES, IMPORTANCE_LEVELS} from '@nih/shared';
 import {
   boolean,
   index,
+  integer,
+  jsonb,
   pgEnum,
   pgTable,
   text,
@@ -8,6 +11,7 @@ import {
   unique,
   uuid,
 } from 'drizzle-orm/pg-core';
+import type {ArticleAnalysisResult} from '../llm/llm.types';
 
 /**
  * Application accounts. Each row is a tenant: every feed, category, and graph
@@ -85,6 +89,12 @@ export const articleStatus = pgEnum('article_status', [
 ]);
 export type ArticleStatusValue = (typeof articleStatus.enumValues)[number];
 
+/** Importance verdict, shared with the graph node schema. */
+export const importanceLevel = pgEnum('importance_level', IMPORTANCE_LEVELS);
+
+/** Named-entity kind, from the shared source of truth. */
+export const entityType = pgEnum('entity_type', ENTITY_TYPES);
+
 /**
  * Raw articles ingested from feeds. Owned per user (denormalized userId for
  * cheap tenant-scoped queries and the per-user graph). Deduplicated within a
@@ -110,6 +120,10 @@ export const articles = pgTable(
     content: text('content'),
     publishedAt: timestamp('published_at', {withTimezone: true}),
     status: articleStatus('status').notNull().default('pending'),
+    // LLM markup, filled once processed (null until then).
+    summary: text('summary'),
+    importance: importanceLevel('importance'),
+    processedAt: timestamp('processed_at', {withTimezone: true}),
     ingestedAt: timestamp('ingested_at', {withTimezone: true})
       .notNull()
       .defaultNow(),
@@ -125,3 +139,84 @@ export const articles = pgTable(
 
 export type ArticleRow = typeof articles.$inferSelect;
 export type NewArticleRow = typeof articles.$inferInsert;
+
+/**
+ * Entity mentions extracted from one article by the LLM (raw name + type). The
+ * canonical-entity merge and the graph are built from these in a later
+ * milestone; storing mentions here keeps that step a pure re-aggregation.
+ */
+export const articleEntities = pgTable(
+  'article_entities',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    articleId: uuid('article_id')
+      .notNull()
+      .references(() => articles.id, {onDelete: 'cascade'}),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, {onDelete: 'cascade'}),
+    name: text('name').notNull(),
+    type: entityType('type').notNull(),
+  },
+  table => [
+    index('article_entities_article_idx').on(table.articleId),
+    index('article_entities_user_idx').on(table.userId),
+  ]
+);
+
+export type ArticleEntityRow = typeof articleEntities.$inferSelect;
+export type NewArticleEntityRow = typeof articleEntities.$inferInsert;
+
+/**
+ * Content-hash cache of the (user-independent) LLM analysis. Keyed by the
+ * article content hash and shared across users: identical content is analyzed
+ * once, every later occurrence reuses this — the cross-user cost optimization.
+ */
+export const llmCache = pgTable('llm_cache', {
+  contentHash: text('content_hash').primaryKey(),
+  result: jsonb('result').notNull().$type<ArticleAnalysisResult>(),
+  provider: text('provider').notNull(),
+  model: text('model').notNull(),
+  createdAt: timestamp('created_at', {withTimezone: true})
+    .notNull()
+    .defaultNow(),
+});
+
+export type LlmCacheRow = typeof llmCache.$inferSelect;
+
+/** The operations that spend LLM tokens, for cost telemetry by type. */
+export const llmOperation = pgEnum('llm_operation', [
+  'processing',
+  'regeneration',
+  'digest',
+]);
+export type LlmOperationValue = (typeof llmOperation.enumValues)[number];
+
+/**
+ * One row per actual provider call (cache hits are not recorded — they cost
+ * nothing). Drives the "calls + tokens by operation" telemetry. articleId is a
+ * loose reference (kept for history even if the article is later deleted).
+ */
+export const llmUsage = pgTable(
+  'llm_usage',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id').references(() => users.id, {onDelete: 'cascade'}),
+    articleId: uuid('article_id'),
+    operation: llmOperation('operation').notNull(),
+    provider: text('provider').notNull(),
+    model: text('model').notNull(),
+    promptTokens: integer('prompt_tokens').notNull(),
+    completionTokens: integer('completion_tokens').notNull(),
+    createdAt: timestamp('created_at', {withTimezone: true})
+      .notNull()
+      .defaultNow(),
+  },
+  table => [
+    index('llm_usage_operation_idx').on(table.operation),
+    index('llm_usage_user_idx').on(table.userId),
+  ]
+);
+
+export type LlmUsageRow = typeof llmUsage.$inferSelect;
+export type NewLlmUsageRow = typeof llmUsage.$inferInsert;

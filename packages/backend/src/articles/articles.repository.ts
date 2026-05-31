@@ -1,6 +1,13 @@
 import {Inject, Injectable} from '@nestjs/common';
+import {eq} from 'drizzle-orm';
+import {Importance} from '@nih/shared';
 import {DRIZZLE, type DrizzleDb} from '../database/database.module';
-import {ArticleRow, NewArticleRow, articles} from '../database/schema';
+import {
+  ArticleRow,
+  ArticleStatusValue,
+  NewArticleRow,
+  articles,
+} from '../database/schema';
 
 /**
  * Data access for ingested articles. Like feeds, article rows are owned by a
@@ -26,5 +33,36 @@ export class ArticlesRepository {
         target: [articles.userId, articles.normalizedUrl],
       })
       .returning();
+  }
+
+  // --- System-level access used by the processing worker. ---
+
+  async findById(id: string): Promise<ArticleRow | undefined> {
+    const rows = await this.db
+      .select()
+      .from(articles)
+      .where(eq(articles.id, id))
+      .limit(1);
+    return rows[0];
+  }
+
+  async setStatus(id: string, status: ArticleStatusValue): Promise<void> {
+    await this.db.update(articles).set({status}).where(eq(articles.id, id));
+  }
+
+  /** Stores the LLM markup and marks the article processed. */
+  async saveProcessed(
+    id: string,
+    markup: {summary: string; importance: Importance}
+  ): Promise<void> {
+    await this.db
+      .update(articles)
+      .set({
+        summary: markup.summary,
+        importance: markup.importance,
+        status: 'processed',
+        processedAt: new Date(),
+      })
+      .where(eq(articles.id, id));
   }
 }

@@ -16,10 +16,12 @@ const llmProvider: Provider = {
       openai: {
         apiKey: config.getOrThrow<string>('OPENAI_API_KEY'),
         model: config.getOrThrow<string>('OPENAI_MODEL'),
+        baseUrl: config.getOrThrow<string>('OPENAI_BASE_URL'),
       },
       anthropic: {
         apiKey: config.getOrThrow<string>('ANTHROPIC_API_KEY'),
         model: config.getOrThrow<string>('ANTHROPIC_MODEL'),
+        baseUrl: config.getOrThrow<string>('ANTHROPIC_BASE_URL'),
       },
     }),
 };

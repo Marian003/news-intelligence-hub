@@ -39,8 +39,10 @@ export const envSchema = z
     LLM_MAX_RETRIES: z.coerce.number().int().nonnegative().default(2),
     OPENAI_API_KEY: z.string().default(''),
     OPENAI_MODEL: z.string().min(1).default('gpt-4o-mini'),
+    OPENAI_BASE_URL: z.string().url().default('https://api.openai.com'),
     ANTHROPIC_API_KEY: z.string().default(''),
     ANTHROPIC_MODEL: z.string().min(1).default('claude-haiku-4-5-20251001'),
+    ANTHROPIC_BASE_URL: z.string().url().default('https://api.anthropic.com'),
 
     // Pre-filter: articles whose extractable text is below either threshold are
     // marked `filtered` and never reach the LLM.

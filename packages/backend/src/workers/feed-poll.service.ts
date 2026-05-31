@@ -1,11 +1,17 @@
-import {Injectable, Logger} from '@nestjs/common';
+import {Inject, Injectable, Logger} from '@nestjs/common';
 import {ConfigService} from '@nestjs/config';
+import {Queue} from 'bullmq';
 import {ArticlesRepository} from '../articles/articles.repository';
 import {FeedRow, NewArticleRow} from '../database/schema';
 import {FeedsRepository} from '../feeds/feeds.repository';
 import {contentHash} from '../ingestion/content-hash';
 import {ParsedArticle, parseFeed} from '../ingestion/feed-parser';
 import {normalizeUrl} from '../ingestion/url-normalize';
+import {
+  ARTICLE_PROCESS_QUEUE,
+  ArticleProcessJob,
+  ProcessArticlePayload,
+} from '../queue/queue.constants';
 
 export interface PollResult {
   ingested: number;
@@ -25,7 +31,8 @@ export class FeedPollService {
   constructor(
     private readonly feeds: FeedsRepository,
     private readonly articles: ArticlesRepository,
-    private readonly config: ConfigService
+    private readonly config: ConfigService,
+    @Inject(ARTICLE_PROCESS_QUEUE) private readonly processQueue: Queue
   ) {}
 
   async activeFeedIds(): Promise<string[]> {
@@ -45,6 +52,16 @@ export class FeedPollService {
       const parsed = parseFeed(xml);
       const rows = parsed.articles.map(article => this.toRow(feed, article));
       const inserted = await this.articles.insertNew(rows);
+
+      // Hand each newly-stored article to the processing pipeline.
+      if (inserted.length > 0) {
+        await this.processQueue.addBulk(
+          inserted.map(article => ({
+            name: ArticleProcessJob.Process,
+            data: {articleId: article.id} satisfies ProcessArticlePayload,
+          }))
+        );
+      }
 
       await this.feeds.updateById(feed.id, {
         status: 'active',

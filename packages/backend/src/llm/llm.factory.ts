@@ -6,8 +6,8 @@ import type {LlmService} from './llm.types';
 export interface LlmFactoryConfig {
   provider: 'openai' | 'anthropic';
   timeoutMs: number;
-  openai: {apiKey: string; model: string};
-  anthropic: {apiKey: string; model: string};
+  openai: {apiKey: string; model: string; baseUrl?: string};
+  anthropic: {apiKey: string; model: string; baseUrl?: string};
   /** Optional fetch override (tests). */
   fetchImpl?: FetchLike;
 }
@@ -22,6 +22,7 @@ export function createLlmService(config: LlmFactoryConfig): LlmService {
       return new OpenAiAdapter({
         apiKey: config.openai.apiKey,
         model: config.openai.model,
+        baseUrl: config.openai.baseUrl,
         timeoutMs: config.timeoutMs,
         fetchImpl: config.fetchImpl,
       });
@@ -29,6 +30,7 @@ export function createLlmService(config: LlmFactoryConfig): LlmService {
       return new AnthropicAdapter({
         apiKey: config.anthropic.apiKey,
         model: config.anthropic.model,
+        baseUrl: config.anthropic.baseUrl,
         timeoutMs: config.timeoutMs,
         fetchImpl: config.fetchImpl,
       });

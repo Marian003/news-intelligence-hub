@@ -8,7 +8,20 @@ import {
 import {ConfigService} from '@nestjs/config';
 import {Queue} from 'bullmq';
 import {bullConnection} from './bull-connection';
-import {FEED_POLL_QUEUE, FEED_POLL_QUEUE_NAME} from './queue.constants';
+import {
+  ARTICLE_PROCESS_QUEUE,
+  ARTICLE_PROCESS_QUEUE_NAME,
+  FEED_POLL_QUEUE,
+  FEED_POLL_QUEUE_NAME,
+} from './queue.constants';
+
+// Shared defaults: exponential backoff on transient failures, bounded history.
+const defaultJobOptions = {
+  attempts: 3,
+  backoff: {type: 'exponential' as const, delay: 5000},
+  removeOnComplete: {count: 200},
+  removeOnFail: {count: 500},
+};
 
 const feedPollQueueProvider: Provider = {
   provide: FEED_POLL_QUEUE,
@@ -16,14 +29,17 @@ const feedPollQueueProvider: Provider = {
   useFactory: (config: ConfigService) =>
     new Queue(FEED_POLL_QUEUE_NAME, {
       connection: bullConnection(config),
-      defaultJobOptions: {
-        // Exponential backoff on transient failures; keep history bounded so
-        // Redis doesn't grow without limit.
-        attempts: 3,
-        backoff: {type: 'exponential', delay: 5000},
-        removeOnComplete: {count: 200},
-        removeOnFail: {count: 500},
-      },
+      defaultJobOptions,
+    }),
+};
+
+const articleProcessQueueProvider: Provider = {
+  provide: ARTICLE_PROCESS_QUEUE,
+  inject: [ConfigService],
+  useFactory: (config: ConfigService) =>
+    new Queue(ARTICLE_PROCESS_QUEUE_NAME, {
+      connection: bullConnection(config),
+      defaultJobOptions,
     }),
 };
 
@@ -34,13 +50,16 @@ const feedPollQueueProvider: Provider = {
  */
 @Global()
 @Module({
-  providers: [feedPollQueueProvider],
-  exports: [FEED_POLL_QUEUE],
+  providers: [feedPollQueueProvider, articleProcessQueueProvider],
+  exports: [FEED_POLL_QUEUE, ARTICLE_PROCESS_QUEUE],
 })
 export class QueueModule implements OnModuleDestroy {
-  constructor(@Inject(FEED_POLL_QUEUE) private readonly feedPoll: Queue) {}
+  constructor(
+    @Inject(FEED_POLL_QUEUE) private readonly feedPoll: Queue,
+    @Inject(ARTICLE_PROCESS_QUEUE) private readonly articleProcess: Queue
+  ) {}
 
   async onModuleDestroy(): Promise<void> {
-    await this.feedPoll.close();
+    await Promise.all([this.feedPoll.close(), this.articleProcess.close()]);
   }
 }

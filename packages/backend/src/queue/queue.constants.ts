@@ -15,3 +15,17 @@ export const FeedPollJob = {
 export interface PollFeedPayload {
   feedId: string;
 }
+
+export const ARTICLE_PROCESS_QUEUE_NAME = 'article-process';
+
+/** Injection token for the article-process {@link import('bullmq').Queue}. */
+export const ARTICLE_PROCESS_QUEUE = Symbol('ARTICLE_PROCESS_QUEUE');
+
+export const ArticleProcessJob = {
+  /** Run the pre-filter + LLM pipeline for one article. */
+  Process: 'process-article',
+} as const;
+
+export interface ProcessArticlePayload {
+  articleId: string;
+}
