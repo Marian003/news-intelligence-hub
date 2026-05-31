@@ -14,6 +14,7 @@
     "clean": "tsc -b --clean",
     "drizzle:generate": "drizzle-kit generate",
     "migrate": "node dist/database/migrate.js",
+    "seed": "node dist/database/seed.js",
     "test": "vitest run",
     "test:watch": "vitest"
   },

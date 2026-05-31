@@ -1,6 +1,6 @@
 # Whole-stack orchestration. Reads configuration from `.env` (copy it from
-# `.env.example`). Services are added as their milestones land; so far:
-# postgres, redis, and the backend with a dependency-aware healthcheck.
+# `.env.example`). `docker compose up --build` brings up the full stack:
+# postgres, redis, migrations, backend API, worker, Bull Board, and the frontend.
 
 services:
   postgres:
@@ -58,10 +58,21 @@ services:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://localhost:'+process.env.BACKEND_PORT+'/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
 
-  # Background processing (feed polling, later article processing). Same image as
-  # the backend, different entrypoint — no HTTP server. Scaling this service does
-  # not touch the API.
+  # Background processing (feed polling, article processing). Same image as the
+  # backend, different entrypoint — no HTTP server. Scaling it does not touch the API.
   worker:
     image: news-intelligence-hub-backend
     command: ['node', 'packages/backend/dist/worker.js']
@@ -77,6 +88,7 @@ services:
     restart: unless-stopped
 
   # Queue dashboard, standalone (not mounted in the API) and basic-auth protected.
+  # Its healthcheck just confirms the port answers (a 401 is a healthy response).
   bullboard:
     image: news-intelligence-hub-backend
     command: ['node', 'packages/backend/dist/bullboard.js']
@@ -94,12 +106,26 @@ services:
           'CMD',
           'node',
           '-e',
-          "fetch('http://localhost:'+process.env.BACKEND_PORT+'/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+          "fetch('http://localhost:'+process.env.BULLBOARD_PORT).then(()=>process.exit(0)).catch(()=>process.exit(1))",
         ]
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 20s
+      start_period: 15s
+
+  # Static SPA served by nginx. The API base URL is baked at build time.
+  frontend:
+    build:
+      context: .
+      dockerfile: packages/frontend/Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL}
+    ports:
+      - '${FRONTEND_PORT}:80'
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
 
 volumes:
   postgres-data:
