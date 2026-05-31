@@ -29,10 +29,24 @@ services:
       timeout: 5s
       retries: 10
 
+  # One-shot: applies SQL migrations, then exits. The backend waits for it to
+  # finish so the API never serves against an un-migrated database. It reuses the
+  # backend image (built by the backend service) rather than building its own.
+  migrate:
+    image: news-intelligence-hub-backend
+    command: ['node', 'packages/backend/dist/database/migrate.js']
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: 'no'
+
   backend:
     build:
       context: .
       dockerfile: packages/backend/Dockerfile
+    image: news-intelligence-hub-backend
     env_file:
       - .env
     ports:
@@ -42,6 +56,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     healthcheck:
       test:
         [

@@ -29,4 +29,6 @@ COPY packages/backend/package.json packages/backend/package.json
 RUN pnpm install --frozen-lockfile --prod
 COPY --from=builder /app/packages/shared/dist packages/shared/dist
 COPY --from=builder /app/packages/backend/dist packages/backend/dist
+# Committed SQL migrations, applied at runtime by the migrate entrypoint.
+COPY --from=builder /app/packages/backend/drizzle packages/backend/drizzle
 CMD ["node", "packages/backend/dist/main.js"]

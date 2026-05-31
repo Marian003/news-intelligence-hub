@@ -15,6 +15,8 @@ export const envSchema = z
       .enum(['development', 'production', 'test'])
       .default('development'),
     BACKEND_PORT: z.coerce.number().int().positive().default(3000),
+    // Public origin used to build links (e.g. the dev email-confirmation link).
+    APP_PUBLIC_URL: z.string().url().default('http://localhost:3000'),
 
     POSTGRES_HOST: z.string().min(1),
     POSTGRES_PORT: z.coerce.number().int().positive().default(5432),
@@ -24,6 +26,9 @@ export const envSchema = z
 
     REDIS_HOST: z.string().min(1),
     REDIS_PORT: z.coerce.number().int().positive().default(6379),
+
+    JWT_SECRET: z.string().min(16, 'JWT_SECRET must be at least 16 characters'),
+    JWT_EXPIRES_IN: z.string().min(1).default('1h'),
   })
   .passthrough();
 
