@@ -1,5 +1,12 @@
-import {ConflictException, Injectable, NotFoundException} from '@nestjs/common';
+import {
+  ConflictException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import {Queue} from 'bullmq';
 import {FeedRow, FeedStatusValue} from '../database/schema';
+import {FEED_POLL_QUEUE, FeedPollJob} from '../queue/queue.constants';
 import {FeedPatch, FeedsRepository} from './feeds.repository';
 import {CreateFeedInput, UpdateFeedInput} from './feeds.schemas';
 
@@ -16,7 +23,10 @@ export interface FeedView {
 
 @Injectable()
 export class FeedsService {
-  constructor(private readonly feeds: FeedsRepository) {}
+  constructor(
+    private readonly feeds: FeedsRepository,
+    @Inject(FEED_POLL_QUEUE) private readonly pollQueue: Queue
+  ) {}
 
   async list(userId: string): Promise<FeedView[]> {
     const rows = await this.feeds.listByUser(userId);
@@ -72,6 +82,19 @@ export class FeedsService {
     if (!deleted) {
       throw new NotFoundException('Feed not found');
     }
+  }
+
+  /**
+   * Manual poll trigger: verifies ownership, then enqueues a poll job. Returns
+   * immediately — the HTTP request never waits on the fetch/parse work.
+   */
+  async requestPoll(id: string, userId: string): Promise<{enqueued: true}> {
+    const feed = await this.feeds.findByIdForUser(id, userId);
+    if (!feed) {
+      throw new NotFoundException('Feed not found');
+    }
+    await this.pollQueue.add(FeedPollJob.PollFeed, {feedId: feed.id});
+    return {enqueued: true};
   }
 }
 

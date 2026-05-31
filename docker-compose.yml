@@ -58,6 +58,36 @@ services:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully
+
+  # Background processing (feed polling, later article processing). Same image as
+  # the backend, different entrypoint — no HTTP server. Scaling this service does
+  # not touch the API.
+  worker:
+    image: news-intelligence-hub-backend
+    command: ['node', 'packages/backend/dist/worker.js']
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  # Queue dashboard, standalone (not mounted in the API) and basic-auth protected.
+  bullboard:
+    image: news-intelligence-hub-backend
+    command: ['node', 'packages/backend/dist/bullboard.js']
+    env_file:
+      - .env
+    ports:
+      - '${BULLBOARD_PORT}:${BULLBOARD_PORT}'
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
     healthcheck:
       test:
         [

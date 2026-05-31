@@ -68,4 +68,14 @@ export class FeedsController {
   ): Promise<void> {
     return this.feeds.remove(id, user.userId);
   }
+
+  /** Queue an immediate poll of this feed; returns 202 without waiting. */
+  @Post(':id/refresh')
+  @HttpCode(HttpStatus.ACCEPTED)
+  refresh(
+    @CurrentUser() user: AuthedUser,
+    @Param('id', ParseUUIDPipe) id: string
+  ): Promise<{enqueued: true}> {
+    return this.feeds.requestPoll(id, user.userId);
+  }
 }

@@ -15,6 +15,13 @@
       "when": 1780186482898,
       "tag": "0001_create_feeds",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1780187463060,
+      "tag": "0002_create_articles",
+      "breakpoints": true
     }
   ]
 }

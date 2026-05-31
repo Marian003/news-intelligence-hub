@@ -4,6 +4,7 @@ import {validateEnv} from './config/env.validation';
 import {AuthModule} from './auth/auth.module';
 import {DatabaseModule} from './database/database.module';
 import {FeedsModule} from './feeds/feeds.module';
+import {QueueModule} from './queue/queue.module';
 import {RedisModule} from './redis/redis.module';
 import {HealthModule} from './health/health.module';
 
@@ -17,6 +18,7 @@ import {HealthModule} from './health/health.module';
     ConfigModule.forRoot({isGlobal: true, validate: validateEnv}),
     DatabaseModule,
     RedisModule,
+    QueueModule,
     HealthModule,
     AuthModule,
     FeedsModule,

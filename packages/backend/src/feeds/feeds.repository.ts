@@ -75,4 +75,24 @@ export class FeedsRepository {
       .returning({id: feeds.id});
     return rows.length > 0;
   }
+
+  // --- System-level access (no owner filter): used only by the trusted worker,
+  // never by a user-facing request. ---
+
+  async findById(id: string): Promise<FeedRow | undefined> {
+    const rows = await this.db
+      .select()
+      .from(feeds)
+      .where(eq(feeds.id, id))
+      .limit(1);
+    return rows[0];
+  }
+
+  async listActive(): Promise<FeedRow[]> {
+    return this.db.select().from(feeds).where(eq(feeds.status, 'active'));
+  }
+
+  async updateById(id: string, patch: FeedPatch): Promise<void> {
+    await this.db.update(feeds).set(patch).where(eq(feeds.id, id));
+  }
 }

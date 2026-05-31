@@ -69,3 +69,59 @@ export const feeds = pgTable(
 
 export type FeedRow = typeof feeds.$inferSelect;
 export type NewFeedRow = typeof feeds.$inferInsert;
+
+/**
+ * Article lifecycle through the pipeline: `pending` (ingested, awaiting
+ * processing), `processing` (claimed by a worker), `processed` (LLM markup
+ * stored), `filtered` (rejected by the deterministic pre-filter, never sent to
+ * the LLM), `failed` (processing errored, retry later).
+ */
+export const articleStatus = pgEnum('article_status', [
+  'pending',
+  'processing',
+  'processed',
+  'filtered',
+  'failed',
+]);
+export type ArticleStatusValue = (typeof articleStatus.enumValues)[number];
+
+/**
+ * Raw articles ingested from feeds. Owned per user (denormalized userId for
+ * cheap tenant-scoped queries and the per-user graph). Deduplicated within a
+ * user by normalized URL (the unique constraint); contentHash is the secondary
+ * dedup key and the LLM cache key. LLM markup is attached in a separate table.
+ */
+export const articles = pgTable(
+  'articles',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, {onDelete: 'cascade'}),
+    feedId: uuid('feed_id')
+      .notNull()
+      .references(() => feeds.id, {onDelete: 'cascade'}),
+    url: text('url').notNull(),
+    normalizedUrl: text('normalized_url').notNull(),
+    contentHash: text('content_hash').notNull(),
+    guid: text('guid'),
+    title: text('title').notNull(),
+    author: text('author'),
+    content: text('content'),
+    publishedAt: timestamp('published_at', {withTimezone: true}),
+    status: articleStatus('status').notNull().default('pending'),
+    ingestedAt: timestamp('ingested_at', {withTimezone: true})
+      .notNull()
+      .defaultNow(),
+  },
+  table => [
+    unique('articles_user_url_unique').on(table.userId, table.normalizedUrl),
+    index('articles_user_idx').on(table.userId),
+    index('articles_feed_idx').on(table.feedId),
+    index('articles_user_hash_idx').on(table.userId, table.contentHash),
+    index('articles_user_status_idx').on(table.userId, table.status),
+  ]
+);
+
+export type ArticleRow = typeof articles.$inferSelect;
+export type NewArticleRow = typeof articles.$inferInsert;

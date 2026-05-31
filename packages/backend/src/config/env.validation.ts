@@ -29,6 +29,17 @@ export const envSchema = z
 
     JWT_SECRET: z.string().min(16, 'JWT_SECRET must be at least 16 characters'),
     JWT_EXPIRES_IN: z.string().min(1).default('1h'),
+
+    // Cron expression for the scheduled poll of all active feeds.
+    FEED_POLL_CRON: z.string().min(1).default('*/15 * * * *'),
+    // Abort a feed HTTP fetch after this many milliseconds.
+    FEED_FETCH_TIMEOUT_MS: z.coerce.number().int().positive().default(15000),
+    // How many jobs a worker processes concurrently.
+    WORKER_CONCURRENCY: z.coerce.number().int().positive().default(2),
+
+    BULLBOARD_PORT: z.coerce.number().int().positive().default(3100),
+    BULLBOARD_USER: z.string().min(1).default('admin'),
+    BULLBOARD_PASSWORD: z.string().min(1, 'BULLBOARD_PASSWORD must be set'),
   })
   .passthrough();
 
