@@ -31,10 +31,10 @@ export class ProcessingWorker implements OnModuleInit, OnModuleDestroy {
   onModuleInit(): void {
     this.worker = new Worker(
       ARTICLE_PROCESS_QUEUE_NAME,
-      (job: Job) =>
-        this.processing.processArticle(
-          (job.data as ProcessArticlePayload).articleId
-        ),
+      (job: Job) => {
+        const payload = job.data as ProcessArticlePayload;
+        return this.processing.processArticle(payload.articleId, payload.mode);
+      },
       {
         connection: bullConnection(this.config),
         concurrency: this.config.getOrThrow<number>('WORKER_CONCURRENCY'),

@@ -26,6 +26,10 @@ export const ArticleProcessJob = {
   Process: 'process-article',
 } as const;
 
+/** `regeneration` re-analyzes an already-processed article under the new axes. */
+export type ProcessMode = 'processing' | 'regeneration';
+
 export interface ProcessArticlePayload {
   articleId: string;
+  mode?: ProcessMode;
 }

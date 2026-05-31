@@ -1,4 +1,4 @@
-import {useState} from 'react';
+import {useEffect, useState} from 'react';
 import {Button, ErrorNote, Spinner, useAsync} from '../components/ui';
 import {api, type Axis, type Category} from '../lib/api';
 
@@ -10,7 +10,72 @@ export function SettingsPage() {
       <h1 className="text-xl font-semibold text-slate-900">Settings</h1>
       <CategoriesSection />
       <AxesSection />
+      <RegenerateSection />
     </div>
+  );
+}
+
+function RegenerateSection() {
+  const [enqueued, setEnqueued] = useState(0);
+  const [inProgress, setInProgress] = useState(0);
+  const [running, setRunning] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!running) return;
+    const id = setInterval(async () => {
+      try {
+        const status = await api.regenerate.status();
+        setInProgress(status.inProgress);
+        if (status.inProgress === 0) setRunning(false);
+      } catch {
+        setRunning(false);
+      }
+    }, 1500);
+    return () => clearInterval(id);
+  }, [running]);
+
+  const start = async () => {
+    setError(null);
+    try {
+      const result = await api.regenerate.start();
+      setEnqueued(result.enqueued);
+      setInProgress(result.enqueued);
+      setRunning(result.enqueued > 0);
+    } catch (err) {
+      setError((err as Error).message);
+    }
+  };
+
+  const done = enqueued - inProgress;
+  const percent = enqueued > 0 ? Math.round((done / enqueued) * 100) : 0;
+
+  return (
+    <section className="space-y-3">
+      <h2 className="font-semibold text-slate-800">Re-analyze articles</h2>
+      <p className="text-sm text-slate-500">
+        After changing axes or categories, re-run the LLM analysis of your
+        stored articles under the new set. It runs in the background — the app
+        stays usable — and the graph reflects the new markup when it finishes.
+      </p>
+      <Button onClick={start} disabled={running}>
+        {running ? `Re-analyzing… ${percent}%` : 'Re-analyze all articles'}
+      </Button>
+      {running && (
+        <div className="h-2 w-full max-w-md overflow-hidden rounded bg-slate-100">
+          <div
+            className="h-full bg-slate-900 transition-all"
+            style={{width: `${percent}%`}}
+          />
+        </div>
+      )}
+      {!running && enqueued > 0 && inProgress === 0 && (
+        <p className="text-sm text-green-700">
+          Re-analyzed {enqueued} article(s).
+        </p>
+      )}
+      {error && <ErrorNote message={error} />}
+    </section>
   );
 }
 
@@ -103,8 +168,8 @@ function AxesSection() {
       <h2 className="font-semibold text-slate-800">Classification axes</h2>
       <p className="text-sm text-slate-500">
         Axes are sent to the model when articles are analyzed. Editing them
-        affects future analyses; use Re-analyze on a feed to refresh existing
-        articles.
+        affects future analyses; use “Re-analyze all articles” below to refresh
+        already-stored articles under the new set.
       </p>
       <div className="flex flex-wrap gap-2">
         <input

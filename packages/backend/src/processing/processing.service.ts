@@ -13,6 +13,7 @@ import type {
   AxisAssignment,
   LlmService,
 } from '../llm/llm.types';
+import {ProcessMode} from '../queue/queue.constants';
 import {AssignmentsRepository} from './assignments.repository';
 import {preFilter} from './pre-filter';
 
@@ -43,13 +44,18 @@ export class ProcessingService {
     @Inject(LLM_SERVICE) private readonly llm: LlmService
   ) {}
 
-  async processArticle(articleId: string): Promise<ProcessOutcome> {
+  async processArticle(
+    articleId: string,
+    mode: ProcessMode = 'processing'
+  ): Promise<ProcessOutcome> {
     const article = await this.articles.findById(articleId);
     if (!article) {
       this.logger.warn(`Process requested for missing article ${articleId}`);
       return {status: 'skipped'};
     }
-    if (article.status === 'processed') {
+    // First-pass processing is idempotent (skip if already done); regeneration
+    // deliberately re-analyzes a processed article under the new axis set.
+    if (mode === 'processing' && article.status === 'processed') {
       return {status: 'skipped'};
     }
 
@@ -79,7 +85,8 @@ export class ProcessingService {
       const {result, cached} = await this.analyze(
         article,
         userCategories,
-        userAxes
+        userAxes,
+        mode
       );
       await this.entityResolution.resolveForArticle(
         {id: article.id, userId: article.userId},
@@ -121,11 +128,16 @@ export class ProcessingService {
       contentHash: string;
     },
     userCategories: CategoryRow[],
-    userAxes: AxisRow[]
+    userAxes: AxisRow[],
+    mode: ProcessMode
   ): Promise<{result: ArticleAnalysisResult; cached: boolean}> {
-    const hit = await this.cache.get(article.contentHash);
-    if (hit) {
-      return {result: hit.result, cached: true};
+    // Regeneration bypasses the content cache: axis/category classification is
+    // catalog-dependent, so the cached (content-only) result would be stale.
+    if (mode !== 'regeneration') {
+      const hit = await this.cache.get(article.contentHash);
+      if (hit) {
+        return {result: hit.result, cached: true};
+      }
     }
 
     const response = await this.llm.analyzeArticle({
@@ -145,7 +157,7 @@ export class ProcessingService {
     await this.usage.record({
       userId: article.userId,
       articleId: article.id,
-      operation: 'processing',
+      operation: mode,
       provider: response.provider,
       model: response.model,
       promptTokens: response.usage.promptTokens,

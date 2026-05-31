@@ -10,6 +10,7 @@ import {EntitiesModule} from './entities/entities.module';
 import {FeedsModule} from './feeds/feeds.module';
 import {GraphModule} from './graph/graph.module';
 import {QueueModule} from './queue/queue.module';
+import {RegenerationModule} from './regeneration/regeneration.module';
 import {RedisModule} from './redis/redis.module';
 import {HealthModule} from './health/health.module';
 
@@ -32,6 +33,7 @@ import {HealthModule} from './health/health.module';
     ArticlesModule,
     EntitiesModule,
     GraphModule,
+    RegenerationModule,
   ],
 })
 export class AppModule {}

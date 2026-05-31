@@ -50,9 +50,13 @@ interface DemoArticle {
 // Two stories share the same content (a wire story republished) to demonstrate
 // the "N similar in other sources" counter.
 const RUNTIME_STORY =
-  'Microsoft unveiled a new AI runtime built for enterprise workloads, ' +
-  'integrating closely with Azure and partner models from OpenAI to cut ' +
-  'latency and simplify deployment across cloud and edge environments.';
+  'Microsoft unveiled a new artificial intelligence runtime built for ' +
+  'enterprise workloads, integrating closely with its Azure platform and ' +
+  'partner models from OpenAI to cut latency and simplify deployment across ' +
+  'cloud and edge environments. Executives said the runtime targets developers ' +
+  'building production applications in finance, healthcare, and manufacturing, ' +
+  'and described it as a step toward making generative technology dependable ' +
+  'enough for regulated industries that have so far moved cautiously.';
 
 const ARTICLES: DemoArticle[] = [
   {
@@ -95,8 +99,13 @@ const ARTICLES: DemoArticle[] = [
     summary:
       'The two firms deepened their multiyear collaboration on AI infrastructure.',
     content:
-      'OpenAI and Microsoft announced an expanded partnership covering model ' +
-      'access and Azure compute commitments over the next several years.',
+      'OpenAI and Microsoft announced an expanded multiyear partnership ' +
+      'covering preferred model access and substantial Azure compute ' +
+      'commitments over the next several years. The two companies framed the ' +
+      'arrangement as a strategic alignment intended to accelerate research, ' +
+      'safety tooling, and enterprise productivity software, even as analysts ' +
+      'questioned how the deepening relationship would affect competition and ' +
+      'pricing across the rapidly consolidating market for foundation models.',
     entities: ['OpenAI', 'Microsoft'],
     categories: ['AI Infrastructure'],
     axes: [
@@ -114,7 +123,12 @@ const ARTICLES: DemoArticle[] = [
       'Nvidia revealed new accelerators aimed at large-scale model training.',
     content:
       'Nvidia introduced its next-generation GPUs, promising large gains for ' +
-      'training and inference, with early interest from Google and other clouds.',
+      'both training and inference, with early interest from Google and other ' +
+      'major cloud providers. The company emphasized improved memory bandwidth ' +
+      'and energy efficiency, positioning the accelerators for the largest ' +
+      'language-model workloads. Supply remains a constraint, executives ' +
+      'acknowledged, and customers are negotiating multi-year allocations to ' +
+      'secure capacity well ahead of general availability.',
     entities: ['Nvidia', 'Google'],
     categories: ['AI Infrastructure'],
     axes: [
@@ -131,7 +145,12 @@ const ARTICLES: DemoArticle[] = [
     summary: 'GitHub shipped tooling updates for code review and automation.',
     content:
       'GitHub, owned by Microsoft, released a set of developer tools focused ' +
-      'on code review automation and continuous integration workflows.',
+      'on code review automation and continuous integration workflows. The ' +
+      'update folds machine assistance into pull requests, suggesting fixes ' +
+      'and summarizing changes for reviewers. Maintainers of large open-source ' +
+      'projects were given early access, and the company said the features ' +
+      'aim to reduce the time engineers spend on routine review without ' +
+      'removing human judgment from the loop.',
     entities: ['GitHub', 'Microsoft'],
     categories: ['DevTools'],
     axes: [
@@ -149,7 +168,12 @@ const ARTICLES: DemoArticle[] = [
       'Microsoft’s CEO outlined a long-term view of cloud and AI convergence.',
     content:
       'In a wide-ranging interview, Satya Nadella discussed how Microsoft sees ' +
-      'Azure and AI reshaping enterprise software over the coming decade.',
+      'Azure and artificial intelligence reshaping enterprise software over the ' +
+      'coming decade. He argued that durable value will come from integrating ' +
+      'models into everyday workflows rather than from standalone demos, and ' +
+      'stressed reliability, governance, and cost control as the questions ' +
+      'enterprise buyers actually ask. He also addressed the energy footprint ' +
+      'of large data centers and the partnerships needed to sustain growth.',
     entities: ['Satya Nadella', 'Microsoft', 'Azure'],
     categories: ['AI Infrastructure'],
     axes: [
@@ -167,7 +191,12 @@ const ARTICLES: DemoArticle[] = [
       'European regulators moved forward on rules affecting digital assets.',
     content:
       'The European Union advanced a regulatory framework for digital assets, ' +
-      'with provisions that touch Ethereum-based protocols and stablecoins.',
+      'with provisions that touch Ethereum-based protocols and stablecoins. ' +
+      'Lawmakers said the rules aim to protect consumers and bring ' +
+      'transparency to trading venues while leaving room for legitimate ' +
+      'innovation. Industry groups warned that compliance costs could push ' +
+      'smaller projects out of the bloc, and pointed to uneven enforcement ' +
+      'across member states as a lingering source of uncertainty for builders.',
     entities: ['Ethereum'],
     categories: ['Crypto Regulation'],
     axes: [
@@ -186,7 +215,12 @@ const ARTICLES: DemoArticle[] = [
       'Google grew its research footprint amid intensifying AI competition.',
     content:
       'Google announced an expansion of its AI research labs, positioning ' +
-      'itself against OpenAI and others in the race to commercialize models.',
+      'itself against OpenAI and others in the race to commercialize models. ' +
+      'The company said it would hire across several regions and deepen work ' +
+      'on multimodal systems, retrieval, and on-device inference. Executives ' +
+      'cast the investment as a long-term bet rather than a response to any ' +
+      'single competitor, while acknowledging that talent and compute remain ' +
+      'the scarcest resources in the field today.',
     entities: ['Google', 'OpenAI'],
     categories: ['AI Infrastructure'],
     axes: [{axis: 'Content Type', value: 'news'}],

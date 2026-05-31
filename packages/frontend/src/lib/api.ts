@@ -192,4 +192,8 @@ export const api = {
     categoryId?: string;
     limit?: string;
   }) => request<GraphPayload>('/graph' + query(params)),
+  regenerate: {
+    start: () => request<{enqueued: number}>('/regenerate', {method: 'POST'}),
+    status: () => request<{inProgress: number}>('/regenerate/status'),
+  },
 };

@@ -89,6 +89,41 @@ export class ArticlesRepository {
     await this.db.update(articles).set({status}).where(eq(articles.id, id));
   }
 
+  /** Ids of a user's articles in a given status (used to drive regeneration). */
+  async idsForUserByStatus(
+    userId: string,
+    status: ArticleStatusValue
+  ): Promise<string[]> {
+    const rows = await this.db
+      .select({id: articles.id})
+      .from(articles)
+      .where(and(eq(articles.userId, userId), eq(articles.status, status)));
+    return rows.map(row => row.id);
+  }
+
+  /** Moves a set of articles to a status in one statement (regeneration start). */
+  async setStatusForIds(
+    ids: string[],
+    status: ArticleStatusValue
+  ): Promise<void> {
+    if (ids.length === 0) return;
+    await this.db
+      .update(articles)
+      .set({status})
+      .where(inArray(articles.id, ids));
+  }
+
+  async countForUserByStatus(
+    userId: string,
+    status: ArticleStatusValue
+  ): Promise<number> {
+    const rows = await this.db
+      .select({count: sql<number>`count(*)::int`})
+      .from(articles)
+      .where(and(eq(articles.userId, userId), eq(articles.status, status)));
+    return rows[0]?.count ?? 0;
+  }
+
   /** Stores the LLM markup and marks the article processed. */
   async saveProcessed(
     id: string,
