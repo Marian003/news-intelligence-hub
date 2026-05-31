@@ -1,11 +1,19 @@
 import {Inject, Injectable, Logger} from '@nestjs/common';
 import {ConfigService} from '@nestjs/config';
 import {ArticlesRepository} from '../articles/articles.repository';
+import {AxesRepository} from '../axes/axes.repository';
+import {CategoriesRepository} from '../categories/categories.repository';
+import {AxisRow, CategoryRow} from '../database/schema';
 import {EntityResolutionService} from '../entities/entity-resolution.service';
 import {LlmCacheRepository} from '../llm/llm-cache.repository';
 import {LlmUsageRepository} from '../llm/llm-usage.repository';
 import {LLM_SERVICE} from '../llm/llm.module';
-import type {ArticleAnalysisResult, LlmService} from '../llm/llm.types';
+import type {
+  ArticleAnalysisResult,
+  AxisAssignment,
+  LlmService,
+} from '../llm/llm.types';
+import {AssignmentsRepository} from './assignments.repository';
 import {preFilter} from './pre-filter';
 
 export type ProcessOutcome =
@@ -26,6 +34,9 @@ export class ProcessingService {
   constructor(
     private readonly articles: ArticlesRepository,
     private readonly entityResolution: EntityResolutionService,
+    private readonly categories: CategoriesRepository,
+    private readonly axes: AxesRepository,
+    private readonly assignments: AssignmentsRepository,
     private readonly cache: LlmCacheRepository,
     private readonly usage: LlmUsageRepository,
     private readonly config: ConfigService,
@@ -60,10 +71,29 @@ export class ProcessingService {
     }
 
     try {
-      const {result, cached} = await this.analyze(article);
+      // The user's catalog is sent to the model (on a cache miss) and used to map
+      // the returned category/axis names back to this user's own ids.
+      const userCategories = await this.categories.listByUser(article.userId);
+      const userAxes = await this.axes.listByUser(article.userId);
+
+      const {result, cached} = await this.analyze(
+        article,
+        userCategories,
+        userAxes
+      );
       await this.entityResolution.resolveForArticle(
         {id: article.id, userId: article.userId},
         result.entities
+      );
+      await this.assignments.replaceCategories(
+        article.id,
+        article.userId,
+        mapCategoryIds(result.categories, userCategories)
+      );
+      await this.assignments.replaceAxisValues(
+        article.id,
+        article.userId,
+        mapAxisValues(result.axes, userAxes)
       );
       await this.articles.saveProcessed(article.id, {
         summary: result.summary,
@@ -82,13 +112,17 @@ export class ProcessingService {
     }
   }
 
-  private async analyze(article: {
-    id: string;
-    userId: string;
-    title: string;
-    content: string | null;
-    contentHash: string;
-  }): Promise<{result: ArticleAnalysisResult; cached: boolean}> {
+  private async analyze(
+    article: {
+      id: string;
+      userId: string;
+      title: string;
+      content: string | null;
+      contentHash: string;
+    },
+    userCategories: CategoryRow[],
+    userAxes: AxisRow[]
+  ): Promise<{result: ArticleAnalysisResult; cached: boolean}> {
     const hit = await this.cache.get(article.contentHash);
     if (hit) {
       return {result: hit.result, cached: true};
@@ -97,8 +131,8 @@ export class ProcessingService {
     const response = await this.llm.analyzeArticle({
       title: article.title,
       content: article.content ?? '',
-      categories: [],
-      axes: [],
+      categories: userCategories.map(c => ({name: c.name})),
+      axes: userAxes.map(a => ({name: a.name, values: a.values})),
       maxTokens: this.config.getOrThrow<number>('LLM_MAX_TOKENS'),
     });
 
@@ -120,4 +154,43 @@ export class ProcessingService {
 
     return {result: response.result, cached: false};
   }
+}
+
+/** Maps category names the model returned to this user's category ids (by name). */
+function mapCategoryIds(
+  names: string[],
+  userCategories: CategoryRow[]
+): string[] {
+  const byName = new Map(userCategories.map(c => [c.name.toLowerCase(), c.id]));
+  const ids = new Set<string>();
+  for (const name of names) {
+    const id = byName.get(name.toLowerCase());
+    if (id) ids.add(id);
+  }
+  return [...ids];
+}
+
+/**
+ * Maps the model's axis assignments to this user's axes, keeping only values
+ * that are actually allowed on the matched axis (one value per axis).
+ */
+function mapAxisValues(
+  assignments: AxisAssignment[],
+  userAxes: AxisRow[]
+): Array<{axisId: string; value: string}> {
+  const byName = new Map(userAxes.map(a => [a.name.toLowerCase(), a]));
+  const out: Array<{axisId: string; value: string}> = [];
+  const used = new Set<string>();
+  for (const {axis, value} of assignments) {
+    const match = byName.get(axis.toLowerCase());
+    if (!match || used.has(match.id)) continue;
+    const allowed = match.values.find(
+      v => v.toLowerCase() === value.toLowerCase()
+    );
+    if (allowed) {
+      out.push({axisId: match.id, value: allowed});
+      used.add(match.id);
+    }
+  }
+  return out;
 }

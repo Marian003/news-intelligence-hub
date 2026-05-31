@@ -10,6 +10,7 @@ import {ConfigService} from '@nestjs/config';
 import {JwtService} from '@nestjs/jwt';
 import {hash, verify} from '@node-rs/argon2';
 import type {Redis} from 'ioredis';
+import {AxesRepository} from '../axes/axes.repository';
 import {REDIS_CLIENT} from '../redis/redis.module';
 import {UsersRepository} from '../users/users.repository';
 import {denylistKey} from './jwt-auth.guard';
@@ -35,6 +36,7 @@ export class AuthService {
 
   constructor(
     private readonly users: UsersRepository,
+    private readonly axes: AxesRepository,
     private readonly jwt: JwtService,
     private readonly config: ConfigService,
     @Inject(REDIS_CLIENT) private readonly redis: Redis
@@ -53,6 +55,8 @@ export class AuthService {
       passwordHash,
       confirmationToken,
     });
+    // Give the new account its starter set of classification axes.
+    await this.axes.seedForUser(user.id);
 
     const baseUrl = this.config.getOrThrow<string>('APP_PUBLIC_URL');
     const confirmationUrl = `${baseUrl}/auth/confirm?token=${confirmationToken}`;

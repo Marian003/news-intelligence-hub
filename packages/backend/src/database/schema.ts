@@ -6,6 +6,7 @@ import {
   jsonb,
   pgEnum,
   pgTable,
+  primaryKey,
   text,
   timestamp,
   unique,
@@ -207,6 +208,105 @@ export const articleEntities = pgTable(
 
 export type ArticleEntityRow = typeof articleEntities.$inferSelect;
 export type NewArticleEntityRow = typeof articleEntities.$inferInsert;
+
+/**
+ * User-defined categories (tags). Pure config — never created by the LLM; the
+ * LLM only chooses among them when assigning. Unique by name per user.
+ */
+export const categories = pgTable(
+  'categories',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, {onDelete: 'cascade'}),
+    name: text('name').notNull(),
+    color: text('color'),
+    createdAt: timestamp('created_at', {withTimezone: true})
+      .notNull()
+      .defaultNow(),
+  },
+  table => [
+    unique('categories_user_name_unique').on(table.userId, table.name),
+    index('categories_user_idx').on(table.userId),
+  ]
+);
+
+export type CategoryRow = typeof categories.$inferSelect;
+export type NewCategoryRow = typeof categories.$inferInsert;
+
+/**
+ * User-defined classification axes (dimensions like "Reader Level"), each with a
+ * fixed set of allowed values. New users are seeded with preset axes they can
+ * rename, extend, or delete. Unique by name per user.
+ */
+export const axes = pgTable(
+  'axes',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, {onDelete: 'cascade'}),
+    name: text('name').notNull(),
+    values: text('values').array().notNull(),
+    createdAt: timestamp('created_at', {withTimezone: true})
+      .notNull()
+      .defaultNow(),
+  },
+  table => [
+    unique('axes_user_name_unique').on(table.userId, table.name),
+    index('axes_user_idx').on(table.userId),
+  ]
+);
+
+export type AxisRow = typeof axes.$inferSelect;
+export type NewAxisRow = typeof axes.$inferInsert;
+
+/** LLM-assigned category tags per article (which of the user's categories apply). */
+export const articleCategories = pgTable(
+  'article_categories',
+  {
+    articleId: uuid('article_id')
+      .notNull()
+      .references(() => articles.id, {onDelete: 'cascade'}),
+    categoryId: uuid('category_id')
+      .notNull()
+      .references(() => categories.id, {onDelete: 'cascade'}),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, {onDelete: 'cascade'}),
+  },
+  table => [
+    primaryKey({columns: [table.articleId, table.categoryId]}),
+    index('article_categories_user_idx').on(table.userId),
+    index('article_categories_category_idx').on(table.categoryId),
+  ]
+);
+
+export type ArticleCategoryRow = typeof articleCategories.$inferSelect;
+
+/** LLM-assigned axis value per article (one value per axis). */
+export const articleAxisValues = pgTable(
+  'article_axis_values',
+  {
+    articleId: uuid('article_id')
+      .notNull()
+      .references(() => articles.id, {onDelete: 'cascade'}),
+    axisId: uuid('axis_id')
+      .notNull()
+      .references(() => axes.id, {onDelete: 'cascade'}),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, {onDelete: 'cascade'}),
+    value: text('value').notNull(),
+  },
+  table => [
+    primaryKey({columns: [table.articleId, table.axisId]}),
+    index('article_axis_values_user_idx').on(table.userId),
+  ]
+);
+
+export type ArticleAxisValueRow = typeof articleAxisValues.$inferSelect;
 
 /**
  * Content-hash cache of the (user-independent) LLM analysis. Keyed by the
