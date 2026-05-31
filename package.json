@@ -12,6 +12,7 @@
     "lint:unicode": "node scripts/check-unicode.mjs",
     "fix": "gts fix",
     "build": "pnpm -r build",
+    "test": "pnpm -r --if-present test",
     "clean": "gts clean && pnpm -r clean",
     "up": "docker compose up --build",
     "down": "docker compose down"
