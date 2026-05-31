@@ -141,9 +141,46 @@ export type ArticleRow = typeof articles.$inferSelect;
 export type NewArticleRow = typeof articles.$inferInsert;
 
 /**
- * Entity mentions extracted from one article by the LLM (raw name + type). The
- * canonical-entity merge and the graph are built from these in a later
- * milestone; storing mentions here keeps that step a pure re-aggregation.
+ * Canonical entities, one row per distinct real-world thing per user. Surface
+ * forms that resolve to the same normalizedKey collapse into one row; the
+ * variants seen are kept in `aliases`. Mention counts and first/last-seen are
+ * derived from article_entities at read time, so reprocessing never leaves stale
+ * denormalized values here.
+ */
+export const entities = pgTable(
+  'entities',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, {onDelete: 'cascade'}),
+    canonicalName: text('canonical_name').notNull(),
+    // Lowercased, punctuation/legal-suffix-stripped form used as the merge key.
+    normalizedKey: text('normalized_key').notNull(),
+    type: entityType('type').notNull(),
+    aliases: text('aliases').array().notNull().default([]),
+    description: text('description'),
+    createdAt: timestamp('created_at', {withTimezone: true})
+      .notNull()
+      .defaultNow(),
+  },
+  table => [
+    unique('entities_user_type_key_unique').on(
+      table.userId,
+      table.type,
+      table.normalizedKey
+    ),
+    index('entities_user_idx').on(table.userId),
+  ]
+);
+
+export type EntityRow = typeof entities.$inferSelect;
+export type NewEntityRow = typeof entities.$inferInsert;
+
+/**
+ * Entity mentions extracted from one article (raw surface name + type), resolved
+ * to a canonical entity. The graph (article->entity "mentions" edges and
+ * entity<->entity "co_mention" edges) is built by aggregating this table.
  */
 export const articleEntities = pgTable(
   'article_entities',
@@ -155,12 +192,16 @@ export const articleEntities = pgTable(
     userId: uuid('user_id')
       .notNull()
       .references(() => users.id, {onDelete: 'cascade'}),
+    entityId: uuid('entity_id')
+      .notNull()
+      .references(() => entities.id, {onDelete: 'cascade'}),
     name: text('name').notNull(),
     type: entityType('type').notNull(),
   },
   table => [
     index('article_entities_article_idx').on(table.articleId),
     index('article_entities_user_idx').on(table.userId),
+    index('article_entities_entity_idx').on(table.entityId),
   ]
 );
 

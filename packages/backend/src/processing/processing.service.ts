@@ -1,7 +1,7 @@
 import {Inject, Injectable, Logger} from '@nestjs/common';
 import {ConfigService} from '@nestjs/config';
-import {ArticleEntitiesRepository} from '../articles/article-entities.repository';
 import {ArticlesRepository} from '../articles/articles.repository';
+import {EntityResolutionService} from '../entities/entity-resolution.service';
 import {LlmCacheRepository} from '../llm/llm-cache.repository';
 import {LlmUsageRepository} from '../llm/llm-usage.repository';
 import {LLM_SERVICE} from '../llm/llm.module';
@@ -25,7 +25,7 @@ export class ProcessingService {
 
   constructor(
     private readonly articles: ArticlesRepository,
-    private readonly articleEntities: ArticleEntitiesRepository,
+    private readonly entityResolution: EntityResolutionService,
     private readonly cache: LlmCacheRepository,
     private readonly usage: LlmUsageRepository,
     private readonly config: ConfigService,
@@ -61,9 +61,8 @@ export class ProcessingService {
 
     try {
       const {result, cached} = await this.analyze(article);
-      await this.articleEntities.replaceForArticle(
-        article.id,
-        article.userId,
+      await this.entityResolution.resolveForArticle(
+        {id: article.id, userId: article.userId},
         result.entities
       );
       await this.articles.saveProcessed(article.id, {

@@ -3,7 +3,9 @@ import {ConfigModule} from '@nestjs/config';
 import {validateEnv} from './config/env.validation';
 import {AuthModule} from './auth/auth.module';
 import {DatabaseModule} from './database/database.module';
+import {EntitiesModule} from './entities/entities.module';
 import {FeedsModule} from './feeds/feeds.module';
+import {GraphModule} from './graph/graph.module';
 import {QueueModule} from './queue/queue.module';
 import {RedisModule} from './redis/redis.module';
 import {HealthModule} from './health/health.module';
@@ -22,6 +24,8 @@ import {HealthModule} from './health/health.module';
     HealthModule,
     AuthModule,
     FeedsModule,
+    EntitiesModule,
+    GraphModule,
   ],
 })
 export class AppModule {}

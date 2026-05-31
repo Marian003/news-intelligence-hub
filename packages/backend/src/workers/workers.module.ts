@@ -1,6 +1,7 @@
 import {Module} from '@nestjs/common';
-import {ArticleEntitiesRepository} from '../articles/article-entities.repository';
 import {ArticlesRepository} from '../articles/articles.repository';
+import {EntitiesRepository} from '../entities/entities.repository';
+import {EntityResolutionService} from '../entities/entity-resolution.service';
 import {LlmCacheRepository} from '../llm/llm-cache.repository';
 import {LlmUsageRepository} from '../llm/llm-usage.repository';
 import {FeedsRepository} from '../feeds/feeds.repository';
@@ -12,14 +13,16 @@ import {FeedPollWorker} from './feed-poll.worker';
 
 /**
  * Everything the worker process runs: the feed-poll and article-process
- * pipelines. Repositories are registered directly (they only need the global
- * Drizzle provider), so the worker stays free of the API's controllers/auth.
+ * pipelines, plus entity resolution. Repositories are registered directly (they
+ * only need the global Drizzle provider), so the worker stays free of the API's
+ * controllers/auth.
  */
 @Module({
   providers: [
     FeedsRepository,
     ArticlesRepository,
-    ArticleEntitiesRepository,
+    EntitiesRepository,
+    EntityResolutionService,
     LlmCacheRepository,
     LlmUsageRepository,
     FeedPollService,

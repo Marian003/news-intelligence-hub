@@ -24,3 +24,37 @@ export type EntityType = (typeof ENTITY_TYPES)[number];
 export const IMPORTANCE_LEVELS = ['high', 'normal', 'junk'] as const;
 
 export type Importance = (typeof IMPORTANCE_LEVELS)[number];
+
+// --- Graph contract (shared by the backend graph endpoint and the react-flow UI) ---
+
+export type GraphEdgeKind = 'mentions' | 'co_mention' | 'similar';
+
+export interface GraphArticleNode {
+  id: string;
+  kind: 'article';
+  label: string;
+  ts: number | null; // Unix seconds
+  importance: Importance | null;
+}
+
+export interface GraphEntityNode {
+  id: string;
+  kind: 'entity';
+  label: string;
+  entityType: EntityType;
+}
+
+export type GraphNode = GraphArticleNode | GraphEntityNode;
+
+export interface GraphEdge {
+  from: string;
+  to: string;
+  kind: GraphEdgeKind;
+  weight?: number; // co_mention: times the pair co-occurred
+  score?: number; // similar: 0..1
+}
+
+export interface GraphPayload {
+  nodes: GraphNode[];
+  edges: GraphEdge[];
+}
