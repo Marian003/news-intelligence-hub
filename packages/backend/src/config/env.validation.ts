@@ -30,6 +30,11 @@ export const envSchema = z
     JWT_SECRET: z.string().min(16, 'JWT_SECRET must be at least 16 characters'),
     JWT_EXPIRES_IN: z.string().min(1).default('1h'),
 
+    // Pre-filter: articles whose extractable text is below either threshold are
+    // marked `filtered` and never reach the LLM.
+    PREFILTER_MIN_CHARS: z.coerce.number().int().nonnegative().default(200),
+    PREFILTER_MIN_WORDS: z.coerce.number().int().nonnegative().default(40),
+
     // Cron expression for the scheduled poll of all active feeds.
     FEED_POLL_CRON: z.string().min(1).default('*/15 * * * *'),
     // Abort a feed HTTP fetch after this many milliseconds.
