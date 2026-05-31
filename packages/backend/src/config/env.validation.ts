@@ -30,6 +30,18 @@ export const envSchema = z
     JWT_SECRET: z.string().min(16, 'JWT_SECRET must be at least 16 characters'),
     JWT_EXPIRES_IN: z.string().min(1).default('1h'),
 
+    // LLM: active provider + per-call budget. Keys are optional so the stack
+    // boots without them; the active adapter fails loudly only when actually
+    // called without its key.
+    LLM_PROVIDER: z.enum(['openai', 'anthropic']).default('anthropic'),
+    LLM_MAX_TOKENS: z.coerce.number().int().positive().default(1024),
+    LLM_TIMEOUT_MS: z.coerce.number().int().positive().default(30000),
+    LLM_MAX_RETRIES: z.coerce.number().int().nonnegative().default(2),
+    OPENAI_API_KEY: z.string().default(''),
+    OPENAI_MODEL: z.string().min(1).default('gpt-4o-mini'),
+    ANTHROPIC_API_KEY: z.string().default(''),
+    ANTHROPIC_MODEL: z.string().min(1).default('claude-haiku-4-5-20251001'),
+
     // Pre-filter: articles whose extractable text is below either threshold are
     // marked `filtered` and never reach the LLM.
     PREFILTER_MIN_CHARS: z.coerce.number().int().nonnegative().default(200),
