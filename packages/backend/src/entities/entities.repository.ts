@@ -21,8 +21,22 @@ export interface EntityListItem {
   lastSeen: number | null;
 }
 
+export interface RelatedEntity {
+  id: string;
+  canonicalName: string;
+  type: EntityType;
+  weight: number; // articles this entity co-occurs with the subject in
+}
+
+export interface ActivityPoint {
+  ts: number; // Unix seconds, day-truncated
+  count: number;
+}
+
 export interface EntityCard extends EntityListItem {
   mentionArticleIds: string[];
+  relatedEntities: RelatedEntity[];
+  activity: ActivityPoint[];
 }
 
 @Injectable()
@@ -138,7 +152,65 @@ export class EntitiesRepository {
       result.rows as unknown as Array<EntityAggRow & {article_ids: string[]}>
     )[0];
     if (!row) return undefined;
-    return {...toListItem(row), mentionArticleIds: row.article_ids ?? []};
+
+    const [related, activity] = await Promise.all([
+      this.relatedEntities(id, userId),
+      this.activity(id, userId),
+    ]);
+    return {
+      ...toListItem(row),
+      mentionArticleIds: row.article_ids ?? [],
+      relatedEntities: related,
+      activity,
+    };
+  }
+
+  /** Other entities co-mentioned with this one, ranked by shared-article count. */
+  private async relatedEntities(
+    id: string,
+    userId: string
+  ): Promise<RelatedEntity[]> {
+    const result = await this.db.execute(sql`
+      SELECT other.id, other.canonical_name, other.type,
+             count(DISTINCT a.article_id)::int AS weight
+      FROM article_entities a
+      JOIN article_entities b
+        ON b.article_id = a.article_id AND b.entity_id <> a.entity_id
+      JOIN entities other ON other.id = b.entity_id
+      WHERE a.entity_id = ${id} AND a.user_id = ${userId}
+      GROUP BY other.id, other.canonical_name, other.type
+      ORDER BY weight DESC, other.canonical_name ASC
+      LIMIT 20
+    `);
+    return (
+      result.rows as unknown as Array<{
+        id: string;
+        canonical_name: string;
+        type: EntityType;
+        weight: number;
+      }>
+    ).map(r => ({
+      id: r.id,
+      canonicalName: r.canonical_name,
+      type: r.type,
+      weight: Number(r.weight),
+    }));
+  }
+
+  /** Day-by-day mention activity for the timeline chart. */
+  private async activity(id: string, userId: string): Promise<ActivityPoint[]> {
+    const result = await this.db.execute(sql`
+      SELECT extract(epoch FROM date_trunc('day', coalesce(a.published_at, a.ingested_at)))::bigint AS ts,
+             count(*)::int AS count
+      FROM article_entities ae
+      JOIN articles a ON a.id = ae.article_id
+      WHERE ae.entity_id = ${id} AND ae.user_id = ${userId}
+      GROUP BY 1
+      ORDER BY 1 ASC
+    `);
+    return (result.rows as unknown as Array<{ts: string | null; count: number}>)
+      .filter(r => r.ts !== null)
+      .map(r => ({ts: Number(r.ts), count: Number(r.count)}));
   }
 }
 

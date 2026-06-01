@@ -120,6 +120,37 @@ function EntityDrawer({id, onClose}: {id: string; onClose: () => void}) {
                 ))}
               </div>
             </div>
+
+            {card.data.relatedEntities.length > 0 && (
+              <div>
+                <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                  Related entities (co-mentions)
+                </h3>
+                <ul className="space-y-1">
+                  {card.data.relatedEntities.map(r => (
+                    <li
+                      key={r.id}
+                      className="flex items-center gap-2 text-sm text-slate-700"
+                    >
+                      <span>{r.canonicalName}</span>
+                      <span className="text-xs text-slate-400">{r.type}</span>
+                      <span className="ml-auto rounded bg-indigo-50 px-1.5 py-0.5 text-xs text-indigo-700">
+                        {r.weight}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {card.data.activity.length > 0 && (
+              <div>
+                <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                  Mention activity
+                </h3>
+                <ActivityChart activity={card.data.activity} />
+              </div>
+            )}
           </div>
         ) : null}
       </div>
@@ -132,6 +163,30 @@ function Stat({label, value}: {label: string; value: string}) {
     <div className="rounded-md bg-slate-50 p-2">
       <dt className="text-xs text-slate-400">{label}</dt>
       <dd className="font-medium text-slate-800">{value}</dd>
+    </div>
+  );
+}
+
+function ActivityChart({
+  activity,
+}: {
+  activity: Array<{ts: number; count: number}>;
+}) {
+  const max = Math.max(...activity.map(a => a.count), 1);
+  return (
+    <div className="flex h-16 items-end gap-1">
+      {activity.map(point => (
+        <div
+          key={point.ts}
+          className="flex-1"
+          title={`${new Date(point.ts * 1000).toLocaleDateString()}: ${point.count}`}
+        >
+          <div
+            className="w-full rounded-t bg-slate-800"
+            style={{height: `${Math.round((point.count / max) * 100)}%`}}
+          />
+        </div>
+      ))}
     </div>
   );
 }

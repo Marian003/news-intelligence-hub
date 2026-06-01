@@ -112,6 +112,13 @@ export interface EntityListItem {
 }
 export interface EntityCard extends EntityListItem {
   mentionArticleIds: string[];
+  relatedEntities: Array<{
+    id: string;
+    canonicalName: string;
+    type: EntityType;
+    weight: number;
+  }>;
+  activity: Array<{ts: number; count: number}>;
 }
 
 export interface ArticleFilters {
