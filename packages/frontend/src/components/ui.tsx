@@ -29,7 +29,23 @@ export function useAsync<T>(fn: () => Promise<T>, deps: unknown[]) {
 }
 
 export function Spinner() {
-  return <div className="p-6 text-sm text-slate-400">Loading…</div>;
+  return (
+    <div className="flex items-center gap-2 p-6 text-sm text-slate-400">
+      <span className="h-3 w-3 animate-spin rounded-full border-2 border-slate-300 border-t-slate-600" />
+      Loading…
+    </div>
+  );
+}
+
+/** Placeholder rows shown while a list loads, to avoid layout jumps. */
+export function Skeleton({rows = 4}: {rows?: number}) {
+  return (
+    <div className="space-y-2">
+      {Array.from({length: rows}).map((_, i) => (
+        <div key={i} className="h-16 animate-pulse rounded-lg bg-slate-100" />
+      ))}
+    </div>
+  );
 }
 
 export function ErrorNote({message}: {message: string}) {

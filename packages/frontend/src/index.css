@@ -7,3 +7,44 @@ body,
 #root {
   height: 100%;
 }
+
+@keyframes nih-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes nih-slide-in {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: none;
+  }
+}
+
+@keyframes nih-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.nih-toast-in {
+  animation: nih-toast-in 0.2s ease-out;
+}
+
+.nih-slide-in {
+  animation: nih-slide-in 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.nih-fade-in {
+  animation: nih-fade-in 0.15s ease-out;
+}

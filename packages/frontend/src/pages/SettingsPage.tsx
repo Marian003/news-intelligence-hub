@@ -1,5 +1,6 @@
 import {useEffect, useState} from 'react';
-import {Button, ErrorNote, Spinner, useAsync} from '../components/ui';
+import {Button, ErrorNote, Skeleton, useAsync} from '../components/ui';
+import {useToast} from '../components/Toast';
 import {api, type Axis, type Category} from '../lib/api';
 
 const input = 'rounded-md border border-slate-300 px-3 py-1.5 text-sm';
@@ -16,6 +17,7 @@ export function SettingsPage() {
 }
 
 function RegenerateSection() {
+  const {notify} = useToast();
   const [enqueued, setEnqueued] = useState(0);
   const [inProgress, setInProgress] = useState(0);
   const [running, setRunning] = useState(false);
@@ -42,6 +44,12 @@ function RegenerateSection() {
       setEnqueued(result.enqueued);
       setInProgress(result.enqueued);
       setRunning(result.enqueued > 0);
+      notify(
+        result.enqueued > 0
+          ? `Re-analyzing ${result.enqueued} article(s)…`
+          : 'No processed articles to re-analyze',
+        result.enqueued > 0 ? 'success' : 'info'
+      );
     } catch (err) {
       setError((err as Error).message);
     }
@@ -81,6 +89,7 @@ function RegenerateSection() {
 
 function CategoriesSection() {
   const categories = useAsync(() => api.categories.list(), []);
+  const {notify} = useToast();
   const [name, setName] = useState('');
   const [error, setError] = useState<string | null>(null);
 
@@ -90,6 +99,7 @@ function CategoriesSection() {
       await api.categories.create(name.trim());
       setName('');
       categories.reload();
+      notify('Category added', 'success');
     } catch (err) {
       setError((err as Error).message);
     }
@@ -97,6 +107,7 @@ function CategoriesSection() {
   const remove = async (id: string) => {
     await api.categories.remove(id);
     categories.reload();
+    notify('Category deleted', 'success');
   };
 
   return (
@@ -115,7 +126,7 @@ function CategoriesSection() {
       </div>
       {error && <ErrorNote message={error} />}
       {categories.loading ? (
-        <Spinner />
+        <Skeleton rows={2} />
       ) : (
         <div className="flex flex-wrap gap-2">
           {categories.data?.map((c: Category) => (
@@ -143,6 +154,7 @@ function CategoriesSection() {
 
 function AxesSection() {
   const axes = useAsync(() => api.axes.list(), []);
+  const {notify} = useToast();
   const [name, setName] = useState('');
   const [values, setValues] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -158,6 +170,7 @@ function AxesSection() {
       setName('');
       setValues('');
       axes.reload();
+      notify('Axis added', 'success');
     } catch (err) {
       setError((err as Error).message);
     }
@@ -190,7 +203,7 @@ function AxesSection() {
       </div>
       {error && <ErrorNote message={error} />}
       {axes.loading ? (
-        <Spinner />
+        <Skeleton rows={2} />
       ) : (
         <ul className="space-y-2">
           {axes.data?.map((axis: Axis) => (

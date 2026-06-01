@@ -50,6 +50,7 @@ function toFlow(graph: GraphPayload): {nodes: Node[]; edges: Edge[]} {
         fontSize: 11,
         padding: 6,
         width: 'auto',
+        boxShadow: '0 1px 3px rgba(15,23,42,0.18)',
       },
     });
   });
@@ -70,6 +71,7 @@ function toFlow(graph: GraphPayload): {nodes: Node[]; edges: Edge[]} {
         fontSize: 11,
         padding: 6,
         width: 150,
+        boxShadow: '0 1px 3px rgba(15,23,42,0.10)',
       },
     });
   });
@@ -79,6 +81,8 @@ function toFlow(graph: GraphPayload): {nodes: Node[]; edges: Edge[]} {
     source: edge.from,
     target: edge.to,
     type: 'straight',
+    // Animate the entity<->entity links so co-mention relationships stand out.
+    animated: edge.kind === 'co_mention',
     style:
       edge.kind === 'co_mention'
         ? {stroke: '#6366f1', strokeWidth: Math.min(1 + (edge.weight ?? 1), 6)}
@@ -187,10 +191,41 @@ export function GraphPage() {
             <Controls />
           </ReactFlow>
         )}
+        {!graph.loading && !graph.error && flow.nodes.length > 0 && (
+          <GraphLegend />
+        )}
         {selected && (
           <NodeDetail selection={selected} onClose={() => setSelected(null)} />
         )}
       </div>
+    </div>
+  );
+}
+
+function GraphLegend() {
+  return (
+    <div className="absolute left-3 top-3 z-10 rounded-lg border bg-white/90 p-2 text-[11px] shadow-sm backdrop-blur">
+      <div className="mb-1 font-semibold text-slate-500">Entities</div>
+      <div className="flex flex-col gap-0.5">
+        {(Object.keys(ENTITY_COLORS) as EntityType[]).map(type => (
+          <span key={type} className="flex items-center gap-1.5">
+            <span
+              className="h-2.5 w-2.5 rounded-full"
+              style={{background: ENTITY_COLORS[type]}}
+            />
+            <span className="capitalize text-slate-600">{type}</span>
+          </span>
+        ))}
+      </div>
+      <div className="mb-1 mt-2 font-semibold text-slate-500">Edges</div>
+      <span className="flex items-center gap-1.5">
+        <span className="h-0.5 w-4 bg-slate-300" />
+        <span className="text-slate-600">mentions</span>
+      </span>
+      <span className="flex items-center gap-1.5">
+        <span className="h-0.5 w-4 bg-indigo-500" />
+        <span className="text-slate-600">co-mention</span>
+      </span>
     </div>
   );
 }

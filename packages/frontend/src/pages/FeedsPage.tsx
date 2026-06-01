@@ -1,5 +1,6 @@
 import {useState} from 'react';
-import {Badge, Button, ErrorNote, Spinner, useAsync} from '../components/ui';
+import {Badge, Button, ErrorNote, Skeleton, useAsync} from '../components/ui';
+import {useToast} from '../components/Toast';
 import {api, type Feed} from '../lib/api';
 
 function when(iso: string | null): string {
@@ -8,6 +9,7 @@ function when(iso: string | null): string {
 
 export function FeedsPage() {
   const feeds = useAsync(() => api.feeds.list(), []);
+  const {notify} = useToast();
   const [url, setUrl] = useState('');
   const [title, setTitle] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -19,13 +21,19 @@ export function FeedsPage() {
       setUrl('');
       setTitle('');
       feeds.reload();
+      notify('Feed added', 'success');
     } catch (err) {
       setError((err as Error).message);
     }
   };
 
-  const run = async (action: Promise<unknown>) => {
-    await action;
+  const run = async (action: Promise<unknown>, message: string) => {
+    try {
+      await action;
+      notify(message, 'success');
+    } catch (err) {
+      notify((err as Error).message, 'error');
+    }
     feeds.reload();
   };
 
@@ -59,7 +67,7 @@ export function FeedsPage() {
       </div>
 
       {feeds.loading ? (
-        <Spinner />
+        <Skeleton rows={3} />
       ) : feeds.error ? (
         <ErrorNote message={feeds.error} />
       ) : feeds.data && feeds.data.length > 0 ? (
@@ -80,10 +88,10 @@ function FeedRow({
   onAction,
 }: {
   feed: Feed;
-  onAction: (action: Promise<unknown>) => void;
+  onAction: (action: Promise<unknown>, message: string) => void;
 }) {
   return (
-    <li className="rounded-lg border bg-white p-3">
+    <li className="rounded-lg border bg-white p-3 transition hover:border-slate-300 hover:shadow-sm">
       <div className="flex flex-wrap items-center gap-2">
         <Badge kind="status" value={feed.status} />
         <span className="font-medium text-slate-900">
@@ -92,7 +100,7 @@ function FeedRow({
         <span className="ml-auto flex gap-1">
           <Button
             variant="ghost"
-            onClick={() => onAction(api.feeds.refresh(feed.id))}
+            onClick={() => onAction(api.feeds.refresh(feed.id), 'Poll queued')}
           >
             Poll now
           </Button>
@@ -102,7 +110,8 @@ function FeedRow({
               onAction(
                 api.feeds.update(feed.id, {
                   status: feed.status === 'paused' ? 'active' : 'paused',
-                })
+                }),
+                feed.status === 'paused' ? 'Feed activated' : 'Feed paused'
               )
             }
           >
@@ -110,7 +119,7 @@ function FeedRow({
           </Button>
           <Button
             variant="danger"
-            onClick={() => onAction(api.feeds.remove(feed.id))}
+            onClick={() => onAction(api.feeds.remove(feed.id), 'Feed deleted')}
           >
             Delete
           </Button>

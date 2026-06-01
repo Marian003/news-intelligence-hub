@@ -1,5 +1,11 @@
 import {useState} from 'react';
-import {ErrorNote, Spinner, formatTs, useAsync} from '../components/ui';
+import {
+  ErrorNote,
+  Skeleton,
+  Spinner,
+  formatTs,
+  useAsync,
+} from '../components/ui';
 import {api, type EntityListItem} from '../lib/api';
 
 export function EntitiesPage() {
@@ -10,7 +16,7 @@ export function EntitiesPage() {
     <div className="space-y-4">
       <h1 className="text-xl font-semibold text-slate-900">Entities</h1>
       {entities.loading ? (
-        <Spinner />
+        <Skeleton rows={6} />
       ) : entities.error ? (
         <ErrorNote message={entities.error} />
       ) : entities.data && entities.data.length > 0 ? (
@@ -69,11 +75,11 @@ function EntityDrawer({id, onClose}: {id: string; onClose: () => void}) {
   const card = useAsync(() => api.entities.get(id), [id]);
   return (
     <div
-      className="fixed inset-0 z-20 flex justify-end bg-slate-900/30"
+      className="nih-fade-in fixed inset-0 z-20 flex justify-end bg-slate-900/30"
       onClick={onClose}
     >
       <div
-        className="h-full w-full max-w-md overflow-y-auto bg-white p-5 shadow-xl"
+        className="nih-slide-in h-full w-full max-w-md overflow-y-auto bg-white p-5 shadow-xl"
         onClick={e => e.stopPropagation()}
       >
         <button

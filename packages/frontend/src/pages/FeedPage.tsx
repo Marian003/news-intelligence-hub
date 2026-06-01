@@ -1,5 +1,12 @@
 import {useState, type ReactNode} from 'react';
-import {Badge, ErrorNote, Spinner, formatTs, useAsync} from '../components/ui';
+import {
+  Badge,
+  ErrorNote,
+  Skeleton,
+  Spinner,
+  formatTs,
+  useAsync,
+} from '../components/ui';
 import {api, type ArticleFilters, type ArticleListItem} from '../lib/api';
 
 const selectClass =
@@ -77,7 +84,7 @@ export function FeedPage() {
       </div>
 
       {articles.loading ? (
-        <Spinner />
+        <Skeleton rows={6} />
       ) : articles.error ? (
         <ErrorNote message={articles.error} />
       ) : articles.data && articles.data.length > 0 ? (
@@ -144,11 +151,11 @@ function ArticleDrawer({id, onClose}: {id: string; onClose: () => void}) {
   const card = useAsync(() => api.articles.get(id), [id]);
   return (
     <div
-      className="fixed inset-0 z-20 flex justify-end bg-slate-900/30"
+      className="nih-fade-in fixed inset-0 z-20 flex justify-end bg-slate-900/30"
       onClick={onClose}
     >
       <div
-        className="h-full w-full max-w-md overflow-y-auto bg-white p-5 shadow-xl"
+        className="nih-slide-in h-full w-full max-w-md overflow-y-auto bg-white p-5 shadow-xl"
         onClick={e => e.stopPropagation()}
       >
         <button
