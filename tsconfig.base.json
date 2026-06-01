@@ -3,8 +3,8 @@
   "extends": "./node_modules/gts/tsconfig-google.json",
   "compilerOptions": {
     "target": "ES2022",
-    "module": "CommonJS",
-    "moduleResolution": "Node",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
     "lib": ["ES2022"],
     "declaration": true,
     "composite": true,
