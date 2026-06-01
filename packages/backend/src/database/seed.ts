@@ -22,6 +22,9 @@ import * as schema from './schema';
  */
 const DEMO_EMAIL = 'demo@nih.local';
 const DEMO_PASSWORD = 'demo12345';
+// Fixed id so re-running the seed keeps the same user — an existing login
+// session (whose JWT carries this id) stays valid across re-seeds.
+const DEMO_USER_ID = '00000000-0000-4000-8000-000000000001';
 
 const ENTITIES: Array<{name: string; type: EntityType; aliases?: string[]}> = [
   {name: 'Microsoft', type: 'company', aliases: ['MSFT', 'Microsoft Corp.']},
@@ -61,7 +64,7 @@ const RUNTIME_STORY =
 const ARTICLES: DemoArticle[] = [
   {
     title: 'Microsoft ships new AI runtime',
-    url: 'https://techwire.example/microsoft-ai-runtime',
+    url: 'https://blogs.microsoft.com/ai/',
     feed: 0,
     importance: 'high',
     publishedDaysAgo: 1,
@@ -79,7 +82,7 @@ const ARTICLES: DemoArticle[] = [
   },
   {
     title: 'Microsoft ships new AI runtime',
-    url: 'https://airoundup.example/ms-runtime-launch',
+    url: 'https://news.microsoft.com/source/',
     feed: 1,
     importance: 'high',
     publishedDaysAgo: 1,
@@ -92,7 +95,7 @@ const ARTICLES: DemoArticle[] = [
   },
   {
     title: 'OpenAI and Microsoft expand their partnership',
-    url: 'https://techwire.example/openai-microsoft-partnership',
+    url: 'https://openai.com/news/',
     feed: 0,
     importance: 'high',
     publishedDaysAgo: 2,
@@ -115,7 +118,7 @@ const ARTICLES: DemoArticle[] = [
   },
   {
     title: 'Nvidia unveils next-generation GPUs for AI training',
-    url: 'https://airoundup.example/nvidia-next-gpu',
+    url: 'https://blogs.nvidia.com/',
     feed: 1,
     importance: 'high',
     publishedDaysAgo: 3,
@@ -138,7 +141,7 @@ const ARTICLES: DemoArticle[] = [
   },
   {
     title: 'GitHub rolls out new developer tooling',
-    url: 'https://techwire.example/github-dev-tooling',
+    url: 'https://github.blog/',
     feed: 0,
     importance: 'normal',
     publishedDaysAgo: 4,
@@ -160,7 +163,7 @@ const ARTICLES: DemoArticle[] = [
   },
   {
     title: 'Satya Nadella on the future of cloud and AI',
-    url: 'https://airoundup.example/nadella-cloud-future',
+    url: 'https://news.microsoft.com/',
     feed: 1,
     importance: 'normal',
     publishedDaysAgo: 5,
@@ -183,7 +186,7 @@ const ARTICLES: DemoArticle[] = [
   },
   {
     title: 'EU advances its crypto regulation framework',
-    url: 'https://techwire.example/eu-crypto-regulation',
+    url: 'https://www.reuters.com/technology/',
     feed: 0,
     importance: 'high',
     publishedDaysAgo: 6,
@@ -207,7 +210,7 @@ const ARTICLES: DemoArticle[] = [
   },
   {
     title: 'Google expands its AI research labs',
-    url: 'https://airoundup.example/google-ai-labs',
+    url: 'https://blog.google/technology/ai/',
     feed: 1,
     importance: 'normal',
     publishedDaysAgo: 7,
@@ -247,6 +250,7 @@ async function run(): Promise<void> {
     const [user] = await db
       .insert(schema.users)
       .values({
+        id: DEMO_USER_ID,
         email: DEMO_EMAIL,
         passwordHash: await hash(DEMO_PASSWORD),
         emailConfirmed: true,
@@ -282,19 +286,19 @@ async function run(): Promise<void> {
     const feedRows = await db
       .insert(schema.feeds)
       .values([
+        // Real, pollable RSS feeds, seeded paused so the scheduler doesn't fetch
+        // them automatically; "Poll now" works on demand (needs an LLM key/mock).
         {
           userId,
-          url: 'https://techwire.example/rss',
-          title: 'Tech Wire',
-          status: 'active',
-          lastPolledAt: new Date(),
+          url: 'https://feeds.arstechnica.com/arstechnica/index',
+          title: 'Ars Technica',
+          status: 'paused',
         },
         {
           userId,
-          url: 'https://airoundup.example/rss',
-          title: 'AI Roundup',
-          status: 'active',
-          lastPolledAt: new Date(),
+          url: 'https://www.theverge.com/rss/index.xml',
+          title: 'The Verge',
+          status: 'paused',
         },
       ])
       .returning();
