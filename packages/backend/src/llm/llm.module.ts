@@ -1,6 +1,6 @@
 import {Global, Module, type Provider} from '@nestjs/common';
 import {ConfigService} from '@nestjs/config';
-import {createLlmService} from './llm.factory';
+import {createResilientLlmService} from './llm.factory';
 import type {LlmService} from './llm.types';
 
 /** Injection token for the active {@link LlmService}. */
@@ -10,7 +10,7 @@ const llmProvider: Provider = {
   provide: LLM_SERVICE,
   inject: [ConfigService],
   useFactory: (config: ConfigService): LlmService =>
-    createLlmService({
+    createResilientLlmService({
       provider: config.getOrThrow<'openai' | 'anthropic'>('LLM_PROVIDER'),
       timeoutMs: config.getOrThrow<number>('LLM_TIMEOUT_MS'),
       openai: {

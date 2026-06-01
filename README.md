@@ -184,16 +184,17 @@ expensive semantic work shared while keeping per-user markup correct on misses.
 soft).
 **Decision.** Each adapter enforces a per-call timeout (`AbortController`) and
 validates structured JSON output against a zod schema before use — invalid
-output throws and never reaches the database. Processing runs in BullMQ with
-retry + exponential backoff; on exhausted retries the article is marked `failed`
-("awaiting processing") and picked up later. Feed errors are recorded on the
-feed's status while other feeds keep running. Errors are logged with ids and
-context, never swallowed.
-**Alternatives.** Cross-provider failover on error (a Should item, designed via
-the provider-independent interface but not yet implemented); no retries.
-**Trade-offs.** Retry/backoff + a clear `failed` state is robust and simple;
-automatic failover would add resilience at the cost of more moving parts, and is
-the next reliability step.
+output throws and never reaches the database. The active LLM service is a
+`ResilientLlmService` that **fails over** to the other provider when a call
+errors (the provider-independent interface makes the wrapper trivial). Processing
+then runs in BullMQ with retry + exponential backoff; on exhausted retries the
+article is marked `failed` ("awaiting processing") and picked up later. Feed
+errors are recorded on the feed's status while other feeds keep running. Errors
+are logged with ids and context, never swallowed.
+**Alternatives.** No failover (rely on retries only); no retries at all.
+**Trade-offs.** Failover + retry/backoff + a clear `failed` state is robust;
+failover only engages when the *other* provider also has a key configured, so it
+degrades gracefully to retry-only when a single provider is set up.
 
 ### ADR-5: Backend — NestJS over Directus
 **Context.** The most significant fork. Directus gives auth/CRUD/admin out of the
@@ -237,14 +238,14 @@ edges and node-type/category filters, the axes settings UI with a regeneration
 action, Bull Board behind basic-auth, one-command `docker compose` startup, a
 demo seed, and this README with ADRs.
 
-**Should — implemented:** meaningful unit tests on the critical parts (LLM
-adapter parse/validate/error, RSS/Atom parsing, the pre-filter, URL/hash, entity
-normalization) — 48 tests via Vitest.
+**Should — implemented:** cross-provider LLM failover (`ResilientLlmService`);
+meaningful unit tests on the critical parts (LLM adapter parse/validate/error,
+RSS/Atom parsing, the pre-filter, URL/hash, entity normalization, failover) — 52
+tests via Vitest.
 
-**Should — not yet implemented:** cross-provider LLM failover; period digests;
-extended graph filters (time window, graph text search); a dedicated LLM
-telemetry dashboard in the UI (telemetry is recorded in `llm_usage` and visible
-via the API/logs).
+**Should — not yet implemented:** period digests; extended graph filters (time
+window, graph text search); a dedicated LLM telemetry dashboard in the UI
+(telemetry is recorded in `llm_usage` and visible via the API/logs).
 
 **Could — not implemented:** edge animation along timestamps, timeline slider,
 category clustering, top-entities dashboard, full-text article search, graph
