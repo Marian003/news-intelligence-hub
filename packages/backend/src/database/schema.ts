@@ -361,3 +361,53 @@ export const llmUsage = pgTable(
 
 export type LlmUsageRow = typeof llmUsage.$inferSelect;
 export type NewLlmUsageRow = typeof llmUsage.$inferInsert;
+
+export const digestPeriod = pgEnum('digest_period', ['day', 'week', 'month']);
+export const digestStatus = pgEnum('digest_status', [
+  'pending',
+  'ready',
+  'failed',
+]);
+
+/** The computed digest payload (deterministic aggregates + the LLM narrative). */
+export interface DigestResultData {
+  topEntities: Array<{name: string; type: string; mentions: number}>;
+  topCategories: Array<{name: string; articles: number}>;
+  keyArticles: Array<{
+    id: string;
+    title: string;
+    url: string;
+    summary: string | null;
+  }>;
+  articleCount: number;
+  summary: string;
+}
+
+/**
+ * Period digests (US-11/FR-11). Built in the background through the digest queue:
+ * a row starts `pending`, the worker fills `result` and flips to `ready` (or
+ * records `error` and `failed`). Scope filters are stored as id arrays.
+ */
+export const digests = pgTable(
+  'digests',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, {onDelete: 'cascade'}),
+    period: digestPeriod('period').notNull(),
+    status: digestStatus('status').notNull().default('pending'),
+    categoryIds: jsonb('category_ids').notNull().$type<string[]>().default([]),
+    entityIds: jsonb('entity_ids').notNull().$type<string[]>().default([]),
+    result: jsonb('result').$type<DigestResultData>(),
+    error: text('error'),
+    createdAt: timestamp('created_at', {withTimezone: true})
+      .notNull()
+      .defaultNow(),
+    completedAt: timestamp('completed_at', {withTimezone: true}),
+  },
+  table => [index('digests_user_idx').on(table.userId)]
+);
+
+export type DigestRow = typeof digests.$inferSelect;
+export type NewDigestRow = typeof digests.$inferInsert;

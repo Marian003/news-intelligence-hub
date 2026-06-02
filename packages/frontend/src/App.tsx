@@ -3,11 +3,13 @@ import {NavLink, Navigate, Route, Routes, useLocation} from 'react-router-dom';
 import {useAuth} from './auth/AuthContext';
 import {Spinner} from './components/ui';
 import {AuthPage, ConfirmPage} from './pages/AuthPages';
+import {DigestsPage} from './pages/DigestsPage';
 import {EntitiesPage} from './pages/EntitiesPage';
 import {FeedPage} from './pages/FeedPage';
 import {FeedsPage} from './pages/FeedsPage';
 import {GraphPage} from './pages/GraphPage';
 import {SettingsPage} from './pages/SettingsPage';
+import {TelemetryPage} from './pages/TelemetryPage';
 
 const navClass = ({isActive}: {isActive: boolean}) =>
   `px-3 py-2 rounded-md text-sm ${
@@ -33,11 +35,17 @@ function Layout({children}: {children: ReactNode}) {
             <NavLink to="/entities" className={navClass}>
               Entities
             </NavLink>
+            <NavLink to="/digests" className={navClass}>
+              Digests
+            </NavLink>
             <NavLink to="/feeds" className={navClass}>
               Feeds
             </NavLink>
             <NavLink to="/settings" className={navClass}>
               Settings
+            </NavLink>
+            <NavLink to="/telemetry" className={navClass}>
+              Telemetry
             </NavLink>
           </nav>
           <div className="ml-auto flex items-center gap-3 text-sm text-slate-500">
@@ -107,6 +115,22 @@ export function App() {
         element={
           <Protected>
             <SettingsPage />
+          </Protected>
+        }
+      />
+      <Route
+        path="/digests"
+        element={
+          <Protected>
+            <DigestsPage />
+          </Protected>
+        }
+      />
+      <Route
+        path="/telemetry"
+        element={
+          <Protected>
+            <TelemetryPage />
           </Protected>
         }
       />

@@ -6,7 +6,11 @@ import {ExpressAdapter} from '@bull-board/express';
 import {Queue} from 'bullmq';
 import express, {type NextFunction, type Request, type Response} from 'express';
 import {validateEnv} from './config/env.validation';
-import {FEED_POLL_QUEUE_NAME} from './queue/queue.constants';
+import {
+  ARTICLE_PROCESS_QUEUE_NAME,
+  DIGEST_QUEUE_NAME,
+  FEED_POLL_QUEUE_NAME,
+} from './queue/queue.constants';
 
 /**
  * Bull Board queue dashboard, run as its own small Express service (not mounted
@@ -47,12 +51,16 @@ function main(): void {
     port: env.REDIS_PORT,
     maxRetriesPerRequest: null,
   };
-  const feedPoll = new Queue(FEED_POLL_QUEUE_NAME, {connection});
+  const queues = [
+    FEED_POLL_QUEUE_NAME,
+    ARTICLE_PROCESS_QUEUE_NAME,
+    DIGEST_QUEUE_NAME,
+  ].map(name => new Queue(name, {connection}));
 
   const serverAdapter = new ExpressAdapter();
   serverAdapter.setBasePath('/');
   createBullBoard({
-    queues: [new BullMQAdapter(feedPoll)],
+    queues: queues.map(queue => new BullMQAdapter(queue)),
     serverAdapter,
   });
 

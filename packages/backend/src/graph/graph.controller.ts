@@ -47,6 +47,15 @@ function parseImportance(raw?: string): Importance[] | undefined {
   return parts as Importance[];
 }
 
+function parseSince(raw?: string): number | undefined {
+  if (!raw) return undefined;
+  const value = Number(raw);
+  if (!Number.isFinite(value) || value < 0) {
+    throw new BadRequestException(`Invalid since: ${raw}`);
+  }
+  return Math.floor(value);
+}
+
 /** Read-only graph payload for the current user. */
 @Controller('graph')
 @UseGuards(JwtAuthGuard)
@@ -59,12 +68,16 @@ export class GraphController {
     @Query('nodeTypes') nodeTypes?: string,
     @Query('importance') importance?: string,
     @Query('categoryId') categoryId?: string,
+    @Query('since') since?: string,
+    @Query('q') q?: string,
     @Query('limit', new DefaultValuePipe(200), ParseIntPipe) limit = 200
   ): Promise<GraphPayload> {
     return this.graph.buildGraph(user.userId, {
       nodeTypes: parseNodeTypes(nodeTypes),
       importance: parseImportance(importance),
       categoryId: categoryId || undefined,
+      since: parseSince(since),
+      q: q?.trim() || undefined,
       limit: Math.min(Math.max(limit, 1), 1000),
     });
   }

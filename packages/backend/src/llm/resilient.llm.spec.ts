@@ -2,6 +2,8 @@ import {describe, expect, it, vi} from 'vitest';
 import type {
   ArticleAnalysisInput,
   ArticleAnalysisResponse,
+  DigestInput,
+  DigestResponse,
   LlmService,
 } from './llm.types';
 import {ResilientLlmService} from './resilient.llm';
@@ -13,6 +15,23 @@ const input: ArticleAnalysisInput = {
   axes: [],
   maxTokens: 256,
 };
+
+const digestInput: DigestInput = {
+  period: 'week',
+  topEntities: [],
+  topCategories: [],
+  articles: [],
+  maxTokens: 256,
+};
+
+function digestResponse(provider: string): DigestResponse {
+  return {
+    result: {summary: `digest from ${provider}`},
+    usage: {promptTokens: 1, completionTokens: 1},
+    provider,
+    model: 'm',
+  };
+}
 
 function response(provider: string): ArticleAnalysisResponse {
   return {
@@ -31,9 +50,16 @@ function response(provider: string): ArticleAnalysisResponse {
 
 function adapter(
   provider: string,
-  impl: () => Promise<ArticleAnalysisResponse>
+  impl: () => Promise<ArticleAnalysisResponse>,
+  digestImpl: () => Promise<DigestResponse> = async () =>
+    digestResponse(provider)
 ): LlmService {
-  return {provider, model: 'm', analyzeArticle: vi.fn(impl)};
+  return {
+    provider,
+    model: 'm',
+    analyzeArticle: vi.fn(impl),
+    buildDigest: vi.fn(digestImpl),
+  };
 }
 
 describe('ResilientLlmService', () => {
@@ -69,6 +95,22 @@ describe('ResilientLlmService', () => {
     const service = new ResilientLlmService([primary, fallback]);
 
     await expect(service.analyzeArticle(input)).rejects.toThrow('down-2');
+  });
+
+  it('fails over for buildDigest too', async () => {
+    const primary = adapter(
+      'openai',
+      async () => response('openai'),
+      async () => {
+        throw new Error('digest down');
+      }
+    );
+    const fallback = adapter('anthropic', async () => response('anthropic'));
+    const service = new ResilientLlmService([primary, fallback]);
+
+    const result = await service.buildDigest(digestInput);
+    expect(result.provider).toBe('anthropic');
+    expect(result.result.summary).toContain('anthropic');
   });
 
   it('exposes the primary provider/model', () => {

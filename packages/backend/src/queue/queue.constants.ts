@@ -33,3 +33,17 @@ export interface ProcessArticlePayload {
   articleId: string;
   mode?: ProcessMode;
 }
+
+export const DIGEST_QUEUE_NAME = 'digest';
+
+/** Injection token for the digest {@link import('bullmq').Queue}. */
+export const DIGEST_QUEUE = Symbol('DIGEST_QUEUE');
+
+export const DigestJob = {
+  /** Build one digest by its row id. */
+  Build: 'build-digest',
+} as const;
+
+export interface BuildDigestPayload {
+  digestId: string;
+}

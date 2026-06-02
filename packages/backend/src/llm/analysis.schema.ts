@@ -1,6 +1,6 @@
 import {ENTITY_TYPES, IMPORTANCE_LEVELS} from '@nih/shared';
 import {z} from 'zod';
-import type {ArticleAnalysisResult} from './llm.types';
+import type {ArticleAnalysisResult, DigestResult} from './llm.types';
 
 /**
  * The exact JSON shape the model must return. Validated before anything touches
@@ -69,6 +69,31 @@ export function parseAnalysis(raw: string): ArticleAnalysisResult {
       .map(issue => `${issue.path.join('.')}: ${issue.message}`)
       .join('; ');
     throw new Error(`Model output failed validation: ${issues}`);
+  }
+  return parsed.data;
+}
+
+/** Shape of the digest the model must return (just the narrative text). */
+export const digestSchema = z.object({
+  summary: z.string().trim().min(1).max(4000),
+});
+
+/** Parses and validates raw digest model output; throws so it is never stored. */
+export function parseDigest(raw: string): DigestResult {
+  let json: unknown;
+  try {
+    json = JSON.parse(extractJsonObject(raw));
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    throw new Error(`Digest output was not valid JSON: ${message}`);
+  }
+
+  const parsed = digestSchema.safeParse(json);
+  if (!parsed.success) {
+    const issues = parsed.error.issues
+      .map(issue => `${issue.path.join('.')}: ${issue.message}`)
+      .join('; ');
+    throw new Error(`Digest output failed validation: ${issues}`);
   }
   return parsed.data;
 }

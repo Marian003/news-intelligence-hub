@@ -1,5 +1,5 @@
 import {Inject, Injectable} from '@nestjs/common';
-import {and, desc, eq, inArray, sql} from 'drizzle-orm';
+import {and, desc, eq, gte, inArray, sql} from 'drizzle-orm';
 import type {GraphEdge, GraphNode, GraphPayload, Importance} from '@nih/shared';
 import {DRIZZLE, type DrizzleDb} from '../database/database.module';
 import {
@@ -13,6 +13,8 @@ export interface GraphQuery {
   nodeTypes: Array<'article' | 'entity'>;
   importance?: Importance[];
   categoryId?: string;
+  since?: number; // Unix seconds; only article nodes at/after this time.
+  q?: string; // Text search over node labels (article titles, entity names).
   limit: number;
 }
 
@@ -50,6 +52,12 @@ export class GraphService {
                   .select({id: articleCategories.articleId})
                   .from(articleCategories)
                   .where(eq(articleCategories.categoryId, query.categoryId))
+              )
+            : undefined,
+          query.since !== undefined
+            ? gte(
+                sql`coalesce(${articles.publishedAt}, ${articles.ingestedAt})`,
+                sql`to_timestamp(${query.since})`
               )
             : undefined
         )
@@ -123,8 +131,38 @@ export class GraphService {
       edges.push(...coMentionEdges(mentionRows));
     }
 
-    return {nodes, edges};
+    return query.q ? searchSubgraph(nodes, edges, query.q) : {nodes, edges};
   }
+}
+
+/**
+ * Narrows the graph to nodes whose label matches the query plus their direct
+ * neighbors, so searching an entity still shows the articles that mention it (and
+ * vice versa). Edges are kept only when both endpoints survive.
+ */
+function searchSubgraph(
+  nodes: GraphNode[],
+  edges: GraphEdge[],
+  q: string
+): GraphPayload {
+  const needle = q.trim().toLowerCase();
+  if (!needle) return {nodes, edges};
+
+  const matched = new Set(
+    nodes.filter(n => n.label.toLowerCase().includes(needle)).map(n => n.id)
+  );
+  if (matched.size === 0) return {nodes: [], edges: []};
+
+  const keep = new Set(matched);
+  for (const edge of edges) {
+    if (matched.has(edge.from)) keep.add(edge.to);
+    if (matched.has(edge.to)) keep.add(edge.from);
+  }
+
+  return {
+    nodes: nodes.filter(n => keep.has(n.id)),
+    edges: edges.filter(e => keep.has(e.from) && keep.has(e.to)),
+  };
 }
 
 /**

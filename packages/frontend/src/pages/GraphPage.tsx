@@ -92,12 +92,26 @@ function toFlow(graph: GraphPayload): {nodes: Node[]; edges: Edge[]} {
   return {nodes, edges};
 }
 
+const WINDOW_SECONDS: Record<string, number> = {
+  day: 86_400,
+  week: 604_800,
+  month: 2_592_000,
+};
+
+function windowToSince(choice: string): string | undefined {
+  const span = WINDOW_SECONDS[choice];
+  if (!span) return undefined;
+  return String(Math.floor(Date.now() / 1000) - span);
+}
+
 export function GraphPage() {
   const categories = useAsync(() => api.categories.list(), []);
   const [showArticles, setShowArticles] = useState(true);
   const [showEntities, setShowEntities] = useState(true);
   const [importance, setImportance] = useState('');
   const [categoryId, setCategoryId] = useState('');
+  const [timeWindow, setTimeWindow] = useState('');
+  const [search, setSearch] = useState('');
 
   const nodeTypes = [
     ...(showArticles ? ['article'] : []),
@@ -110,8 +124,10 @@ export function GraphPage() {
         nodeTypes: nodeTypes || 'article',
         importance: importance || undefined,
         categoryId: categoryId || undefined,
+        since: windowToSince(timeWindow),
+        q: search.trim() || undefined,
       }),
-    [nodeTypes, importance, categoryId]
+    [nodeTypes, importance, categoryId, timeWindow, search]
   );
   const [selected, setSelected] = useState<Selection | null>(null);
 
@@ -165,6 +181,22 @@ export function GraphPage() {
             </option>
           ))}
         </select>
+        <select
+          className="rounded-md border border-slate-300 px-2 py-1.5"
+          value={timeWindow}
+          onChange={e => setTimeWindow(e.target.value)}
+        >
+          <option value="">Any time</option>
+          <option value="day">Last 24 hours</option>
+          <option value="week">Last 7 days</option>
+          <option value="month">Last 30 days</option>
+        </select>
+        <input
+          className="rounded-md border border-slate-300 px-2 py-1.5"
+          placeholder="Search nodes…"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+        />
         <span className="ml-auto text-xs text-slate-400">
           {flow.nodes.length} nodes · {flow.edges.length} edges
         </span>

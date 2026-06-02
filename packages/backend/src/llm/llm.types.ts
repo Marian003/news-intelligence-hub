@@ -55,12 +55,37 @@ export interface ArticleAnalysisResponse {
 }
 
 /**
+ * Everything the model needs to write a period digest. All the figures are
+ * computed deterministically by the caller; the model only turns them into prose
+ * (FR-11) — it never does the aggregation.
+ */
+export interface DigestInput {
+  period: 'day' | 'week' | 'month';
+  topEntities: string[];
+  topCategories: string[];
+  articles: Array<{title: string; summary: string}>;
+  maxTokens: number;
+}
+
+export interface DigestResult {
+  summary: string;
+}
+
+export interface DigestResponse {
+  result: DigestResult;
+  usage: LlmUsage;
+  provider: string;
+  model: string;
+}
+
+/**
  * Provider-independent LLM interface. Adapters (OpenAI, Anthropic) implement it;
- * the active one is selected by env. Extended with matchEntities/buildDigest in
- * the milestones that need them.
+ * the active one is selected by env. `analyzeArticle` markup runs in the article
+ * pipeline; `buildDigest` writes the period digest prose (FR-11).
  */
 export interface LlmService {
   readonly provider: string;
   readonly model: string;
   analyzeArticle(input: ArticleAnalysisInput): Promise<ArticleAnalysisResponse>;
+  buildDigest(input: DigestInput): Promise<DigestResponse>;
 }

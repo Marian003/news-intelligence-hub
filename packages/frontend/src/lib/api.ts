@@ -128,6 +128,42 @@ export interface EntityCard extends EntityListItem {
   activity: Array<{ts: number; count: number}>;
 }
 
+export interface LlmUsageByOperation {
+  operation: string;
+  calls: number;
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+}
+export interface TelemetrySummary {
+  byOperation: LlmUsageByOperation[];
+  totals: {calls: number; promptTokens: number; completionTokens: number};
+}
+
+export interface DigestResultData {
+  topEntities: Array<{name: string; type: string; mentions: number}>;
+  topCategories: Array<{name: string; articles: number}>;
+  keyArticles: Array<{
+    id: string;
+    title: string;
+    url: string;
+    summary: string | null;
+  }>;
+  articleCount: number;
+  summary: string;
+}
+export interface Digest {
+  id: string;
+  period: 'day' | 'week' | 'month';
+  status: 'pending' | 'ready' | 'failed';
+  categoryIds: string[];
+  entityIds: string[];
+  result: DigestResultData | null;
+  error: string | null;
+  createdAt: string;
+  completedAt: string | null;
+}
+
 export interface ArticleFilters {
   status?: string;
   feedId?: string;
@@ -205,10 +241,24 @@ export const api = {
     nodeTypes?: string;
     importance?: string;
     categoryId?: string;
+    since?: string;
+    q?: string;
     limit?: string;
   }) => request<GraphPayload>('/graph' + query(params)),
   regenerate: {
     start: () => request<{enqueued: number}>('/regenerate', {method: 'POST'}),
     status: () => request<{inProgress: number}>('/regenerate/status'),
+  },
+  telemetry: {
+    llm: () => request<TelemetrySummary>('/telemetry/llm'),
+  },
+  digests: {
+    list: () => request<Digest[]>('/digests'),
+    get: (id: string) => request<Digest>(`/digests/${id}`),
+    create: (body: {
+      period: 'day' | 'week' | 'month';
+      categoryIds?: string[];
+      entityIds?: string[];
+    }) => request<Digest>('/digests', {method: 'POST', body}),
   },
 };

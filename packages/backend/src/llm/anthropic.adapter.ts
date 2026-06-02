@@ -1,9 +1,11 @@
-import {parseAnalysis} from './analysis.schema';
+import {parseAnalysis, parseDigest} from './analysis.schema';
 import {FetchLike, postJson} from './http';
-import {buildAnalysisPrompt} from './prompt';
+import {buildAnalysisPrompt, buildDigestPrompt} from './prompt';
 import type {
   ArticleAnalysisInput,
   ArticleAnalysisResponse,
+  DigestInput,
+  DigestResponse,
   LlmService,
 } from './llm.types';
 
@@ -40,10 +42,26 @@ export class AnthropicAdapter implements LlmService {
   async analyzeArticle(
     input: ArticleAnalysisInput
   ): Promise<ArticleAnalysisResponse> {
+    const {system, user} = buildAnalysisPrompt(input);
+    const {text, usage} = await this.message(system, user, input.maxTokens);
+    return {result: parseAnalysis(text), usage, ...this.identity()};
+  }
+
+  async buildDigest(input: DigestInput): Promise<DigestResponse> {
+    const {system, user} = buildDigestPrompt(input);
+    const {text, usage} = await this.message(system, user, input.maxTokens);
+    return {result: parseDigest(text), usage, ...this.identity()};
+  }
+
+  private identity() {
+    return {provider: this.provider, model: this.model};
+  }
+
+  /** One Messages call; returns the text block and token usage. */
+  private async message(system: string, user: string, maxTokens: number) {
     if (!this.options.apiKey) {
       throw new Error('ANTHROPIC_API_KEY is not set');
     }
-    const {system, user} = buildAnalysisPrompt(input);
     const raw = (await postJson(
       this.fetchImpl,
       `${this.baseUrl}/v1/messages`,
@@ -53,7 +71,7 @@ export class AnthropicAdapter implements LlmService {
       },
       {
         model: this.model,
-        max_tokens: input.maxTokens,
+        max_tokens: maxTokens,
         temperature: 0,
         system,
         messages: [{role: 'user', content: user}],
@@ -66,13 +84,11 @@ export class AnthropicAdapter implements LlmService {
       throw new Error('Anthropic response had no text content');
     }
     return {
-      result: parseAnalysis(text),
+      text,
       usage: {
         promptTokens: raw.usage?.input_tokens ?? 0,
         completionTokens: raw.usage?.output_tokens ?? 0,
       },
-      provider: this.provider,
-      model: this.model,
     };
   }
 }

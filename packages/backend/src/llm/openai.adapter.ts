@@ -1,9 +1,11 @@
-import {parseAnalysis} from './analysis.schema';
+import {parseAnalysis, parseDigest} from './analysis.schema';
 import {FetchLike, postJson} from './http';
-import {buildAnalysisPrompt} from './prompt';
+import {buildAnalysisPrompt, buildDigestPrompt} from './prompt';
 import type {
   ArticleAnalysisInput,
   ArticleAnalysisResponse,
+  DigestInput,
+  DigestResponse,
   LlmService,
 } from './llm.types';
 
@@ -41,10 +43,26 @@ export class OpenAiAdapter implements LlmService {
   async analyzeArticle(
     input: ArticleAnalysisInput
   ): Promise<ArticleAnalysisResponse> {
+    const {system, user} = buildAnalysisPrompt(input);
+    const {content, usage} = await this.chat(system, user, input.maxTokens);
+    return {result: parseAnalysis(content), usage, ...this.identity()};
+  }
+
+  async buildDigest(input: DigestInput): Promise<DigestResponse> {
+    const {system, user} = buildDigestPrompt(input);
+    const {content, usage} = await this.chat(system, user, input.maxTokens);
+    return {result: parseDigest(content), usage, ...this.identity()};
+  }
+
+  private identity() {
+    return {provider: this.provider, model: this.model};
+  }
+
+  /** One JSON-mode chat completion; returns the message text and token usage. */
+  private async chat(system: string, user: string, maxTokens: number) {
     if (!this.options.apiKey) {
       throw new Error('OPENAI_API_KEY is not set');
     }
-    const {system, user} = buildAnalysisPrompt(input);
     const raw = (await postJson(
       this.fetchImpl,
       `${this.baseUrl}/v1/chat/completions`,
@@ -52,7 +70,7 @@ export class OpenAiAdapter implements LlmService {
       {
         model: this.model,
         temperature: 0,
-        max_tokens: input.maxTokens,
+        max_tokens: maxTokens,
         response_format: {type: 'json_object'},
         messages: [
           {role: 'system', content: system},
@@ -67,13 +85,11 @@ export class OpenAiAdapter implements LlmService {
       throw new Error('OpenAI response had no message content');
     }
     return {
-      result: parseAnalysis(content),
+      content,
       usage: {
         promptTokens: raw.usage?.prompt_tokens ?? 0,
         completionTokens: raw.usage?.completion_tokens ?? 0,
       },
-      provider: this.provider,
-      model: this.model,
     };
   }
 }

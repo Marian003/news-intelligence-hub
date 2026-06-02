@@ -6,6 +6,7 @@ import {AuthModule} from './auth/auth.module';
 import {AxesModule} from './axes/axes.module';
 import {CategoriesModule} from './categories/categories.module';
 import {DatabaseModule} from './database/database.module';
+import {DigestsModule} from './digests/digests.module';
 import {EntitiesModule} from './entities/entities.module';
 import {FeedsModule} from './feeds/feeds.module';
 import {GraphModule} from './graph/graph.module';
@@ -13,6 +14,7 @@ import {QueueModule} from './queue/queue.module';
 import {RegenerationModule} from './regeneration/regeneration.module';
 import {RedisModule} from './redis/redis.module';
 import {HealthModule} from './health/health.module';
+import {TelemetryModule} from './telemetry/telemetry.module';
 
 /**
  * Root module. Configuration is loaded and validated once here and made global;
@@ -34,6 +36,8 @@ import {HealthModule} from './health/health.module';
     EntitiesModule,
     GraphModule,
     RegenerationModule,
+    TelemetryModule,
+    DigestsModule,
   ],
 })
 export class AppModule {}

@@ -2,6 +2,8 @@ import {Logger} from '@nestjs/common';
 import type {
   ArticleAnalysisInput,
   ArticleAnalysisResponse,
+  DigestInput,
+  DigestResponse,
   LlmService,
 } from './llm.types';
 
@@ -29,14 +31,25 @@ export class ResilientLlmService implements LlmService {
     return this.adapters[0].model;
   }
 
-  async analyzeArticle(
+  analyzeArticle(
     input: ArticleAnalysisInput
   ): Promise<ArticleAnalysisResponse> {
+    return this.withFailover(adapter => adapter.analyzeArticle(input));
+  }
+
+  buildDigest(input: DigestInput): Promise<DigestResponse> {
+    return this.withFailover(adapter => adapter.buildDigest(input));
+  }
+
+  /** Runs `call` against each adapter in turn, failing over on error. */
+  private async withFailover<T>(
+    call: (adapter: LlmService) => Promise<T>
+  ): Promise<T> {
     let lastError: unknown;
     for (let i = 0; i < this.adapters.length; i++) {
       const adapter = this.adapters[i];
       try {
-        return await adapter.analyzeArticle(input);
+        return await call(adapter);
       } catch (err) {
         lastError = err;
         const message = err instanceof Error ? err.message : String(err);

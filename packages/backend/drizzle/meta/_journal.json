@@ -50,6 +50,13 @@
       "when": 1780347706056,
       "tag": "0006_detach_articles_on_feed_delete",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1780437717394,
+      "tag": "0007_digests",
+      "breakpoints": true
     }
   ]
 }
