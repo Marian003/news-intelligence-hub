@@ -1,5 +1,5 @@
 import {Inject, Injectable} from '@nestjs/common';
-import {and, desc, eq, gte, ilike, inArray, ne, sql} from 'drizzle-orm';
+import {and, desc, eq, gte, inArray, ne, sql} from 'drizzle-orm';
 import {EntityType, Importance} from '@nih/shared';
 import {DRIZZLE, type DrizzleDb} from '../database/database.module';
 import {
@@ -63,6 +63,12 @@ export interface ArticleCard extends Omit<ArticleListItem, 'entities'> {
  * uses {@link insertNew}, which relies on the (userId, normalizedUrl) unique
  * constraint to skip articles already seen — that is the URL-level dedup.
  */
+// The searchable document for full-text queries: title + summary + content.
+const articleDocument = sql`to_tsvector('english',
+  coalesce(${articles.title}, '') || ' ' ||
+  coalesce(${articles.summary}, '') || ' ' ||
+  coalesce(${articles.content}, ''))`;
+
 @Injectable()
 export class ArticlesRepository {
   constructor(@Inject(DRIZZLE) private readonly db: DrizzleDb) {}
@@ -161,7 +167,13 @@ export class ArticlesRepository {
     if (filters.importance) {
       conditions.push(eq(articles.importance, filters.importance));
     }
-    if (filters.q) conditions.push(ilike(articles.title, `%${filters.q}%`));
+    // Full-text search over title + summary + content, ranked by relevance.
+    // websearch_to_tsquery tolerates arbitrary user input (no syntax errors).
+    if (filters.q) {
+      conditions.push(
+        sql`${articleDocument} @@ websearch_to_tsquery('english', ${filters.q})`
+      );
+    }
     if (filters.since !== undefined) {
       conditions.push(
         gte(
@@ -200,8 +212,13 @@ export class ArticlesRepository {
       .from(articles)
       .leftJoin(feeds, eq(feeds.id, articles.feedId))
       .where(and(...conditions))
+      // When searching, order by text relevance; otherwise by recency.
       .orderBy(
-        desc(sql`coalesce(${articles.publishedAt}, ${articles.ingestedAt})`)
+        filters.q
+          ? desc(
+              sql`ts_rank(${articleDocument}, websearch_to_tsquery('english', ${filters.q}))`
+            )
+          : desc(sql`coalesce(${articles.publishedAt}, ${articles.ingestedAt})`)
       )
       .limit(filters.limit)
       .offset(filters.offset);

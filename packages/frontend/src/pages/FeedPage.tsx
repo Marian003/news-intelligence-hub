@@ -46,7 +46,7 @@ export function FeedPage() {
       <div className="flex flex-wrap gap-2 rounded-lg border bg-white p-3">
         <input
           className="flex-1 rounded-md border border-slate-300 px-3 py-1.5 text-sm"
-          placeholder="Search titles…"
+          placeholder="Search articles…"
           value={filters.q ?? ''}
           onChange={e => set({q: e.target.value || undefined})}
         />
