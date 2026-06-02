@@ -260,10 +260,13 @@ meaningful unit tests on the critical parts (LLM adapter parse/validate/error,
 RSS/Atom parsing, the pre-filter, URL/hash, entity normalization, failover, the
 fuzzy-match resolver) — 59 tests via Vitest.
 
-**Could — implemented:** edge animation along timestamps (the entity co-mention
-edges are animated). Not implemented: timeline slider, category clustering,
-top-entities dashboard, full-text article search, graph export, article-to-article
-semantic similarity (the graph schema reserves a `similar` edge type for it).
+**Could — implemented:** edge animation along timestamps (entity co-mention edges
+are animated); a timeline slider that replays the graph as it grew (reveals
+articles up to a cutoff plus the entities they mention); full-text article search
+over title + summary + content (Postgres `to_tsvector`/`websearch_to_tsquery`,
+relevance-ranked). Not implemented: category clustering, top-entities dashboard,
+graph export, article-to-article semantic similarity (the graph schema reserves a
+`similar` edge type for it).
 
 **Known limitations.**
 - FR-6 LLM fuzzy entity matching (MSFT, Cyrillic) is implemented but **off by
