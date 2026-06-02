@@ -1,4 +1,4 @@
-import {useMemo, useState} from 'react';
+import {useEffect, useMemo, useState} from 'react';
 import ReactFlow, {Background, Controls, type Edge, type Node} from 'reactflow';
 import 'reactflow/dist/style.css';
 import type {EntityType, GraphPayload} from '@nih/shared';
@@ -104,6 +104,52 @@ function windowToSince(choice: string): string | undefined {
   return String(Math.floor(Date.now() / 1000) - span);
 }
 
+/** The min/max article timestamp in the graph, or null if too few are dated. */
+function timeBounds(
+  graph: GraphPayload | undefined
+): {min: number; max: number} | null {
+  const stamps = (graph?.nodes ?? [])
+    .filter(n => n.kind === 'article' && typeof n.ts === 'number')
+    .map(n => (n as {ts: number}).ts);
+  if (stamps.length < 2) return null;
+  const min = Math.min(...stamps);
+  const max = Math.max(...stamps);
+  return min < max ? {min, max} : null;
+}
+
+/**
+ * Reveals the graph as it grew up to `cutoff`: keeps article nodes at/before the
+ * cutoff, the entities those articles mention, and edges between survivors. This
+ * is the timeline replay — drag back to watch a story's entities accumulate.
+ */
+function filterByTime(graph: GraphPayload, cutoff: number): GraphPayload {
+  const visible = new Set<string>();
+  for (const node of graph.nodes) {
+    if (node.kind === 'article' && (node.ts === null || node.ts <= cutoff)) {
+      visible.add(node.id);
+    }
+  }
+  // An entity is shown once a visible article mentions it.
+  for (const edge of graph.edges) {
+    if (edge.kind === 'mentions' && visible.has(edge.from)) {
+      visible.add(edge.to);
+    }
+  }
+  return {
+    nodes: graph.nodes.filter(n => visible.has(n.id)),
+    edges: graph.edges.filter(e => visible.has(e.from) && visible.has(e.to)),
+  };
+}
+
+/** Short date label for the timeline slider readout. */
+function formatCutoff(ts: number): string {
+  return new Date(ts * 1000).toLocaleDateString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+}
+
 export function GraphPage() {
   const categories = useAsync(() => api.categories.list(), []);
   const [showArticles, setShowArticles] = useState(true);
@@ -131,9 +177,24 @@ export function GraphPage() {
   );
   const [selected, setSelected] = useState<Selection | null>(null);
 
+  // Timeline: the article-node timestamp range drives a "reveal up to" slider.
+  const bounds = useMemo(() => timeBounds(graph.data), [graph.data]);
+  const [cutoff, setCutoff] = useState<number | null>(null);
+  // Reset the slider to "show all" whenever a new graph loads.
+  useEffect(() => setCutoff(null), [graph.data]);
+
+  const effectiveCutoff = cutoff ?? bounds?.max ?? null;
+  const visibleGraph = useMemo(
+    () =>
+      graph.data && bounds && effectiveCutoff !== null
+        ? filterByTime(graph.data, effectiveCutoff)
+        : graph.data,
+    [graph.data, bounds, effectiveCutoff]
+  );
+
   const flow = useMemo(
-    () => (graph.data ? toFlow(graph.data) : {nodes: [], edges: []}),
-    [graph.data]
+    () => (visibleGraph ? toFlow(visibleGraph) : {nodes: [], edges: []}),
+    [visibleGraph]
   );
 
   return (
@@ -201,6 +262,32 @@ export function GraphPage() {
           {flow.nodes.length} nodes · {flow.edges.length} edges
         </span>
       </div>
+
+      {bounds && effectiveCutoff !== null && (
+        <div className="flex items-center gap-3 rounded-lg border bg-white p-3 text-sm">
+          <span className="whitespace-nowrap text-slate-600">Timeline</span>
+          <input
+            type="range"
+            className="flex-1 accent-slate-900"
+            min={bounds.min}
+            max={bounds.max}
+            step={3600}
+            value={effectiveCutoff}
+            onChange={e => setCutoff(Number(e.target.value))}
+          />
+          <span className="w-28 whitespace-nowrap text-right text-xs text-slate-500">
+            up to {formatCutoff(effectiveCutoff)}
+          </span>
+          {cutoff !== null && cutoff < bounds.max && (
+            <button
+              onClick={() => setCutoff(null)}
+              className="text-xs text-slate-400 hover:text-slate-700"
+            >
+              Reset
+            </button>
+          )}
+        </div>
+      )}
 
       <div className="relative h-[70vh] overflow-hidden rounded-lg border bg-white">
         {graph.loading ? (
