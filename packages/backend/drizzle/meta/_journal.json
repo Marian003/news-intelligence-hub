@@ -43,6 +43,13 @@
       "when": 1780235332270,
       "tag": "0005_categories_axes",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1780347706056,
+      "tag": "0006_detach_articles_on_feed_delete",
+      "breakpoints": true
     }
   ]
 }

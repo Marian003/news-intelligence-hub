@@ -85,7 +85,8 @@ export interface ArticleListItem {
   title: string;
   url: string;
   author: string | null;
-  feedId: string;
+  feedId: string | null;
+  source: string | null;
   status: string;
   importance: Importance | null;
   summary: string | null;
@@ -93,12 +94,18 @@ export interface ArticleListItem {
   ingestedAt: number;
   similarCount: number;
   categories: string[];
+  entities: Array<{name: string; type: EntityType}>;
 }
-export interface ArticleCard extends ArticleListItem {
+export interface ArticleCard extends Omit<ArticleListItem, 'entities'> {
   content: string | null;
   entities: Array<{id: string; canonicalName: string; type: EntityType}>;
   axisValues: Array<{axis: string; value: string}>;
-  similar: Array<{id: string; title: string; url: string; feedId: string}>;
+  similar: Array<{
+    id: string;
+    title: string;
+    url: string;
+    feedId: string | null;
+  }>;
 }
 export interface EntityListItem {
   id: string;
@@ -127,6 +134,7 @@ export interface ArticleFilters {
   importance?: string;
   categoryId?: string;
   q?: string;
+  since?: string;
 }
 
 function query(params: Record<string, string | undefined>): string {

@@ -12,10 +12,24 @@ import {api, type ArticleFilters, type ArticleListItem} from '../lib/api';
 const selectClass =
   'rounded-md border border-slate-300 px-2 py-1.5 text-sm bg-white';
 
+const WINDOW_SECONDS: Record<string, number> = {
+  day: 86_400,
+  week: 604_800,
+  month: 2_592_000,
+};
+
+/** Maps a time-window choice to a Unix-second lower bound for the `since` filter. */
+function windowToSince(choice: string): string | undefined {
+  const span = WINDOW_SECONDS[choice];
+  if (!span) return undefined;
+  return String(Math.floor(Date.now() / 1000) - span);
+}
+
 export function FeedPage() {
   const feeds = useAsync(() => api.feeds.list(), []);
   const categories = useAsync(() => api.categories.list(), []);
   const [filters, setFilters] = useState<ArticleFilters>({status: 'processed'});
+  const [timeWindow, setTimeWindow] = useState('');
   const articles = useAsync(
     () => api.articles.list(filters),
     [JSON.stringify(filters)]
@@ -81,6 +95,19 @@ export function FeedPage() {
           <option value="filtered">Filtered</option>
           <option value="failed">Failed</option>
         </select>
+        <select
+          className={selectClass}
+          value={timeWindow}
+          onChange={e => {
+            setTimeWindow(e.target.value);
+            set({since: windowToSince(e.target.value)});
+          }}
+        >
+          <option value="">Any time</option>
+          <option value="day">Last 24 hours</option>
+          <option value="week">Last 7 days</option>
+          <option value="month">Last 30 days</option>
+        </select>
       </div>
 
       {articles.loading ? (
@@ -124,10 +151,32 @@ function ArticleRow({
           )}
           <span className="font-medium text-slate-900">{article.title}</span>
         </div>
+        {article.source && (
+          <p className="mt-0.5 text-xs font-medium text-slate-400">
+            {article.source}
+          </p>
+        )}
         {article.summary && (
           <p className="mt-1 line-clamp-2 text-sm text-slate-600">
             {article.summary}
           </p>
+        )}
+        {article.entities.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-1">
+            {article.entities.slice(0, 6).map(e => (
+              <span
+                key={e.name}
+                className="rounded bg-slate-50 px-1.5 py-0.5 text-xs text-slate-600 ring-1 ring-slate-200"
+              >
+                {e.name}
+              </span>
+            ))}
+            {article.entities.length > 6 && (
+              <span className="px-1 text-xs text-slate-400">
+                +{article.entities.length - 6}
+              </span>
+            )}
+          </div>
         )}
         <div className="mt-2 flex flex-wrap items-center gap-1 text-xs text-slate-500">
           {article.categories.map(c => (
@@ -180,6 +229,11 @@ function ArticleDrawer({id, onClose}: {id: string; onClose: () => void}) {
               <h2 className="text-lg font-semibold text-slate-900">
                 {card.data.title}
               </h2>
+              {card.data.source && (
+                <p className="text-xs font-medium text-slate-400">
+                  {card.data.source}
+                </p>
+              )}
               <a
                 href={card.data.url}
                 target="_blank"

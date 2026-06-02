@@ -37,6 +37,16 @@ function asStatus(raw?: string): ArticleStatusValue | undefined {
   return raw as ArticleStatusValue;
 }
 
+/** Parses a time-window lower bound (Unix seconds) for the feed filter. */
+function asSince(raw?: string): number | undefined {
+  if (!raw) return undefined;
+  const value = Number(raw);
+  if (!Number.isFinite(value) || value < 0) {
+    throw new BadRequestException(`Invalid since: ${raw}`);
+  }
+  return Math.floor(value);
+}
+
 /** Article feed (list + filters) and the article detail card. */
 @Controller('articles')
 @UseGuards(JwtAuthGuard)
@@ -51,6 +61,7 @@ export class ArticlesController {
     @Query('importance') importance?: string,
     @Query('categoryId') categoryId?: string,
     @Query('q') q?: string,
+    @Query('since') since?: string,
     @Query('limit', new DefaultValuePipe(50), ParseIntPipe) limit = 50,
     @Query('offset', new DefaultValuePipe(0), ParseIntPipe) offset = 0
   ): Promise<ArticleListItem[]> {
@@ -60,6 +71,7 @@ export class ArticlesController {
       importance: asImportance(importance),
       categoryId: categoryId || undefined,
       q: q?.trim() || undefined,
+      since: asSince(since),
       limit: Math.min(Math.max(limit, 1), 200),
       offset: Math.max(offset, 0),
     });

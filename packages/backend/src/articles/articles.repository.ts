@@ -1,5 +1,5 @@
 import {Inject, Injectable} from '@nestjs/common';
-import {and, desc, eq, ilike, inArray, ne, sql} from 'drizzle-orm';
+import {and, desc, eq, gte, ilike, inArray, ne, sql} from 'drizzle-orm';
 import {EntityType, Importance} from '@nih/shared';
 import {DRIZZLE, type DrizzleDb} from '../database/database.module';
 import {
@@ -13,6 +13,7 @@ import {
   axes,
   categories,
   entities,
+  feeds,
 } from '../database/schema';
 
 export interface ArticleListFilters {
@@ -21,6 +22,7 @@ export interface ArticleListFilters {
   importance?: Importance;
   categoryId?: string;
   q?: string;
+  since?: number; // Unix seconds; only articles at/after this time-window start.
   limit: number;
   offset: number;
 }
@@ -30,7 +32,8 @@ export interface ArticleListItem {
   title: string;
   url: string;
   author: string | null;
-  feedId: string;
+  feedId: string | null;
+  source: string | null; // feed title, or null once the feed is deleted
   status: ArticleStatusValue;
   importance: Importance | null;
   summary: string | null;
@@ -38,14 +41,20 @@ export interface ArticleListItem {
   ingestedAt: number;
   similarCount: number;
   categories: string[];
+  entities: Array<{name: string; type: EntityType}>;
 }
 
-export interface ArticleCard extends ArticleListItem {
+export interface ArticleCard extends Omit<ArticleListItem, 'entities'> {
   content: string | null;
   contentHash: string;
   entities: Array<{id: string; canonicalName: string; type: EntityType}>;
   axisValues: Array<{axis: string; value: string}>;
-  similar: Array<{id: string; title: string; url: string; feedId: string}>;
+  similar: Array<{
+    id: string;
+    title: string;
+    url: string;
+    feedId: string | null;
+  }>;
 }
 
 /**
@@ -153,6 +162,14 @@ export class ArticlesRepository {
       conditions.push(eq(articles.importance, filters.importance));
     }
     if (filters.q) conditions.push(ilike(articles.title, `%${filters.q}%`));
+    if (filters.since !== undefined) {
+      conditions.push(
+        gte(
+          sql`coalesce(${articles.publishedAt}, ${articles.ingestedAt})`,
+          sql`to_timestamp(${filters.since})`
+        )
+      );
+    }
     if (filters.categoryId) {
       conditions.push(
         inArray(
@@ -178,8 +195,10 @@ export class ArticlesRepository {
         publishedAt: articles.publishedAt,
         ingestedAt: articles.ingestedAt,
         contentHash: articles.contentHash,
+        source: feeds.title,
       })
       .from(articles)
+      .leftJoin(feeds, eq(feeds.id, articles.feedId))
       .where(and(...conditions))
       .orderBy(
         desc(sql`coalesce(${articles.publishedAt}, ${articles.ingestedAt})`)
@@ -189,8 +208,9 @@ export class ArticlesRepository {
 
     if (rows.length === 0) return [];
     const ids = rows.map(r => r.id);
-    const [categoryMap, similarMap] = await Promise.all([
+    const [categoryMap, entityMap, similarMap] = await Promise.all([
       this.categoriesByArticle(ids),
+      this.entitiesByArticle(ids),
       this.similarCounts(
         userId,
         rows.map(r => r.contentHash)
@@ -203,6 +223,7 @@ export class ArticlesRepository {
       url: row.url,
       author: row.author,
       feedId: row.feedId,
+      source: row.source,
       status: row.status,
       importance: row.importance,
       summary: row.summary,
@@ -210,6 +231,7 @@ export class ArticlesRepository {
       ingestedAt: toUnix(row.ingestedAt) ?? 0,
       similarCount: Math.max(0, (similarMap.get(row.contentHash) ?? 1) - 1),
       categories: categoryMap.get(row.id) ?? [],
+      entities: entityMap.get(row.id) ?? [],
     }));
   }
 
@@ -225,42 +247,47 @@ export class ArticlesRepository {
     const article = rows[0];
     if (!article) return undefined;
 
-    const [entityRows, categoryRows, axisRows, similar] = await Promise.all([
-      this.db
-        .select({
-          id: entities.id,
-          canonicalName: entities.canonicalName,
-          type: entities.type,
-        })
-        .from(articleEntities)
-        .innerJoin(entities, eq(entities.id, articleEntities.entityId))
-        .where(eq(articleEntities.articleId, id)),
-      this.db
-        .select({name: categories.name})
-        .from(articleCategories)
-        .innerJoin(categories, eq(categories.id, articleCategories.categoryId))
-        .where(eq(articleCategories.articleId, id)),
-      this.db
-        .select({axis: axes.name, value: articleAxisValues.value})
-        .from(articleAxisValues)
-        .innerJoin(axes, eq(axes.id, articleAxisValues.axisId))
-        .where(eq(articleAxisValues.articleId, id)),
-      this.db
-        .select({
-          id: articles.id,
-          title: articles.title,
-          url: articles.url,
-          feedId: articles.feedId,
-        })
-        .from(articles)
-        .where(
-          and(
-            eq(articles.userId, userId),
-            eq(articles.contentHash, article.contentHash),
-            ne(articles.id, id)
+    const [source, entityRows, categoryRows, axisRows, similar] =
+      await Promise.all([
+        this.feedTitle(article.feedId),
+        this.db
+          .select({
+            id: entities.id,
+            canonicalName: entities.canonicalName,
+            type: entities.type,
+          })
+          .from(articleEntities)
+          .innerJoin(entities, eq(entities.id, articleEntities.entityId))
+          .where(eq(articleEntities.articleId, id)),
+        this.db
+          .select({name: categories.name})
+          .from(articleCategories)
+          .innerJoin(
+            categories,
+            eq(categories.id, articleCategories.categoryId)
           )
-        ),
-    ]);
+          .where(eq(articleCategories.articleId, id)),
+        this.db
+          .select({axis: axes.name, value: articleAxisValues.value})
+          .from(articleAxisValues)
+          .innerJoin(axes, eq(axes.id, articleAxisValues.axisId))
+          .where(eq(articleAxisValues.articleId, id)),
+        this.db
+          .select({
+            id: articles.id,
+            title: articles.title,
+            url: articles.url,
+            feedId: articles.feedId,
+          })
+          .from(articles)
+          .where(
+            and(
+              eq(articles.userId, userId),
+              eq(articles.contentHash, article.contentHash),
+              ne(articles.id, id)
+            )
+          ),
+      ]);
 
     return {
       id: article.id,
@@ -268,6 +295,7 @@ export class ArticlesRepository {
       url: article.url,
       author: article.author,
       feedId: article.feedId,
+      source,
       status: article.status,
       importance: article.importance,
       summary: article.summary,
@@ -295,6 +323,37 @@ export class ArticlesRepository {
     for (const row of rows) {
       const list = map.get(row.articleId) ?? [];
       list.push(row.name);
+      map.set(row.articleId, list);
+    }
+    return map;
+  }
+
+  private async feedTitle(feedId: string | null): Promise<string | null> {
+    if (!feedId) return null;
+    const rows = await this.db
+      .select({title: feeds.title})
+      .from(feeds)
+      .where(eq(feeds.id, feedId))
+      .limit(1);
+    return rows[0]?.title ?? null;
+  }
+
+  private async entitiesByArticle(
+    articleIds: string[]
+  ): Promise<Map<string, Array<{name: string; type: EntityType}>>> {
+    const rows = await this.db
+      .select({
+        articleId: articleEntities.articleId,
+        name: entities.canonicalName,
+        type: entities.type,
+      })
+      .from(articleEntities)
+      .innerJoin(entities, eq(entities.id, articleEntities.entityId))
+      .where(inArray(articleEntities.articleId, articleIds));
+    const map = new Map<string, Array<{name: string; type: EntityType}>>();
+    for (const row of rows) {
+      const list = map.get(row.articleId) ?? [];
+      list.push({name: row.name, type: row.type});
       map.set(row.articleId, list);
     }
     return map;

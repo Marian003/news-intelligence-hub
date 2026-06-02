@@ -109,9 +109,9 @@ export const articles = pgTable(
     userId: uuid('user_id')
       .notNull()
       .references(() => users.id, {onDelete: 'cascade'}),
-    feedId: uuid('feed_id')
-      .notNull()
-      .references(() => feeds.id, {onDelete: 'cascade'}),
+    // Nullable + SET NULL: deleting a feed detaches its articles (US-3) rather
+    // than deleting already-processed work.
+    feedId: uuid('feed_id').references(() => feeds.id, {onDelete: 'set null'}),
     url: text('url').notNull(),
     normalizedUrl: text('normalized_url').notNull(),
     contentHash: text('content_hash').notNull(),
