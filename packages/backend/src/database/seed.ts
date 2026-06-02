@@ -64,7 +64,7 @@ const RUNTIME_STORY =
 const ARTICLES: DemoArticle[] = [
   {
     title: 'Microsoft ships new AI runtime',
-    url: 'https://blogs.microsoft.com/ai/',
+    url: 'https://arstechnica.com/ai/',
     feed: 0,
     importance: 'high',
     publishedDaysAgo: 1,
@@ -82,7 +82,7 @@ const ARTICLES: DemoArticle[] = [
   },
   {
     title: 'Microsoft ships new AI runtime',
-    url: 'https://news.microsoft.com/source/',
+    url: 'https://www.theverge.com/ai-artificial-intelligence',
     feed: 1,
     importance: 'high',
     publishedDaysAgo: 1,
@@ -95,7 +95,7 @@ const ARTICLES: DemoArticle[] = [
   },
   {
     title: 'OpenAI and Microsoft expand their partnership',
-    url: 'https://openai.com/news/',
+    url: 'https://arstechnica.com/information-technology/',
     feed: 0,
     importance: 'high',
     publishedDaysAgo: 2,
@@ -118,7 +118,7 @@ const ARTICLES: DemoArticle[] = [
   },
   {
     title: 'Nvidia unveils next-generation GPUs for AI training',
-    url: 'https://blogs.nvidia.com/',
+    url: 'https://www.theverge.com/tech',
     feed: 1,
     importance: 'high',
     publishedDaysAgo: 3,
@@ -141,7 +141,7 @@ const ARTICLES: DemoArticle[] = [
   },
   {
     title: 'GitHub rolls out new developer tooling',
-    url: 'https://github.blog/',
+    url: 'https://arstechnica.com/gadgets/',
     feed: 0,
     importance: 'normal',
     publishedDaysAgo: 4,
@@ -163,7 +163,7 @@ const ARTICLES: DemoArticle[] = [
   },
   {
     title: 'Satya Nadella on the future of cloud and AI',
-    url: 'https://news.microsoft.com/',
+    url: 'https://www.theverge.com/microsoft',
     feed: 1,
     importance: 'normal',
     publishedDaysAgo: 5,
@@ -186,7 +186,7 @@ const ARTICLES: DemoArticle[] = [
   },
   {
     title: 'EU advances its crypto regulation framework',
-    url: 'https://www.reuters.com/technology/',
+    url: 'https://arstechnica.com/tech-policy/',
     feed: 0,
     importance: 'high',
     publishedDaysAgo: 6,
@@ -210,7 +210,7 @@ const ARTICLES: DemoArticle[] = [
   },
   {
     title: 'Google expands its AI research labs',
-    url: 'https://blog.google/technology/ai/',
+    url: 'https://www.theverge.com/google',
     feed: 1,
     importance: 'normal',
     publishedDaysAgo: 7,
