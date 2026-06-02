@@ -78,6 +78,33 @@ export interface DigestResponse {
   model: string;
 }
 
+/** An existing entity offered to the matcher as a possible identity (FR-6). */
+export interface EntityCandidate {
+  id: string;
+  canonicalName: string;
+  aliases: string[];
+}
+
+/** A novel surface form to be matched against known entities of the same type. */
+export interface EntityMatchInput {
+  name: string;
+  type: EntityType;
+  candidates: EntityCandidate[];
+  maxTokens: number;
+}
+
+/** The matcher's verdict: the id of the same entity, or null for a new one. */
+export interface EntityMatchResult {
+  matchId: string | null;
+}
+
+export interface EntityMatchResponse {
+  result: EntityMatchResult;
+  usage: LlmUsage;
+  provider: string;
+  model: string;
+}
+
 /**
  * Provider-independent LLM interface. Adapters (OpenAI, Anthropic) implement it;
  * the active one is selected by env. `analyzeArticle` markup runs in the article
@@ -88,4 +115,5 @@ export interface LlmService {
   readonly model: string;
   analyzeArticle(input: ArticleAnalysisInput): Promise<ArticleAnalysisResponse>;
   buildDigest(input: DigestInput): Promise<DigestResponse>;
+  matchEntities(input: EntityMatchInput): Promise<EntityMatchResponse>;
 }

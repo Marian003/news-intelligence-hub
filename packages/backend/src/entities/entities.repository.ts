@@ -1,12 +1,14 @@
 import {Inject, Injectable} from '@nestjs/common';
-import {and, eq, sql} from 'drizzle-orm';
+import {and, desc, eq, sql} from 'drizzle-orm';
 import type {EntityType} from '@nih/shared';
+import type {EntityCandidate} from '../llm/llm.types';
 import {DRIZZLE, type DrizzleDb} from '../database/database.module';
 import {
   EntityRow,
   NewArticleEntityRow,
   articleEntities,
   entities,
+  entityAliasKeys,
 } from '../database/schema';
 
 /** A canonical entity enriched with read-time aggregates. */
@@ -108,6 +110,97 @@ export class EntitiesRepository {
         await tx.insert(articleEntities).values(links);
       }
     });
+  }
+
+  // --- FR-6 fuzzy matching (only used when LLM_ENTITY_MATCHING is on) ---
+
+  /** Looks up a canonical entity by its exact normalized key. */
+  async findByKey(
+    userId: string,
+    type: EntityType,
+    normalizedKey: string
+  ): Promise<EntityRow | undefined> {
+    const rows = await this.db
+      .select()
+      .from(entities)
+      .where(
+        and(
+          eq(entities.userId, userId),
+          eq(entities.type, type),
+          eq(entities.normalizedKey, normalizedKey)
+        )
+      )
+      .limit(1);
+    return rows[0];
+  }
+
+  async findById(id: string): Promise<EntityRow | undefined> {
+    const rows = await this.db
+      .select()
+      .from(entities)
+      .where(eq(entities.id, id))
+      .limit(1);
+    return rows[0];
+  }
+
+  /** Resolves a surface form previously matched to an entity (the match cache). */
+  async findByAliasKey(
+    userId: string,
+    type: EntityType,
+    aliasKey: string
+  ): Promise<EntityRow | undefined> {
+    const rows = await this.db
+      .select({entity: entities})
+      .from(entityAliasKeys)
+      .innerJoin(entities, eq(entities.id, entityAliasKeys.entityId))
+      .where(
+        and(
+          eq(entityAliasKeys.userId, userId),
+          eq(entityAliasKeys.type, type),
+          eq(entityAliasKeys.aliasKey, aliasKey)
+        )
+      )
+      .limit(1);
+    return rows[0]?.entity;
+  }
+
+  /** Records that a surface form maps to an entity, so it never re-matches. */
+  async addAliasKey(
+    userId: string,
+    type: EntityType,
+    aliasKey: string,
+    entityId: string
+  ): Promise<void> {
+    await this.db
+      .insert(entityAliasKeys)
+      .values({userId, type, aliasKey, entityId})
+      .onConflictDoNothing({
+        target: [
+          entityAliasKeys.userId,
+          entityAliasKeys.type,
+          entityAliasKeys.aliasKey,
+        ],
+      });
+  }
+
+  /** Existing entities of a type, most-mentioned first, as match candidates. */
+  async candidatesForType(
+    userId: string,
+    type: EntityType,
+    limit: number
+  ): Promise<EntityCandidate[]> {
+    return this.db
+      .select({
+        id: entities.id,
+        canonicalName: entities.canonicalName,
+        aliases: entities.aliases,
+      })
+      .from(entities)
+      .leftJoin(articleEntities, eq(articleEntities.entityId, entities.id))
+      .where(and(eq(entities.userId, userId), eq(entities.type, type)))
+      .groupBy(entities.id)
+      .orderBy(desc(sql`count(${articleEntities.id})`))
+      .limit(limit);
   }
 
   // --- Read (API), all userId-scoped. Aggregates derived from mentions. ---

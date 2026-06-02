@@ -179,6 +179,35 @@ export type EntityRow = typeof entities.$inferSelect;
 export type NewEntityRow = typeof entities.$inferInsert;
 
 /**
+ * Cache of fuzzy-match decisions (FR-6): a normalized surface form that the LLM
+ * resolved to an existing entity (e.g. "msft" -> Microsoft). Future occurrences
+ * of that form resolve here deterministically, so the matcher is consulted at
+ * most once per novel surface — keeping cost bounded (FR-10).
+ */
+export const entityAliasKeys = pgTable(
+  'entity_alias_keys',
+  {
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, {onDelete: 'cascade'}),
+    type: entityType('type').notNull(),
+    aliasKey: text('alias_key').notNull(),
+    entityId: uuid('entity_id')
+      .notNull()
+      .references(() => entities.id, {onDelete: 'cascade'}),
+    createdAt: timestamp('created_at', {withTimezone: true})
+      .notNull()
+      .defaultNow(),
+  },
+  table => [
+    primaryKey({columns: [table.userId, table.type, table.aliasKey]}),
+    index('entity_alias_keys_entity_idx').on(table.entityId),
+  ]
+);
+
+export type EntityAliasKeyRow = typeof entityAliasKeys.$inferSelect;
+
+/**
  * Entity mentions extracted from one article (raw surface name + type), resolved
  * to a canonical entity. The graph (article->entity "mentions" edges and
  * entity<->entity "co_mention" edges) is built by aggregating this table.
@@ -330,6 +359,7 @@ export const llmOperation = pgEnum('llm_operation', [
   'processing',
   'regeneration',
   'digest',
+  'entity_match',
 ]);
 export type LlmOperationValue = (typeof llmOperation.enumValues)[number];
 

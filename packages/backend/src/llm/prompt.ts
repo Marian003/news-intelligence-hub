@@ -1,5 +1,9 @@
 import {ENTITY_TYPES, IMPORTANCE_LEVELS} from '@nih/shared';
-import type {ArticleAnalysisInput, DigestInput} from './llm.types';
+import type {
+  ArticleAnalysisInput,
+  DigestInput,
+  EntityMatchInput,
+} from './llm.types';
 
 /**
  * Builds the provider-independent analysis prompt. Both adapters send the same
@@ -89,6 +93,46 @@ export function buildDigestPrompt(input: DigestInput): {
     '',
     'Key articles:',
     articles,
+  ].join('\n');
+
+  return {system, user};
+}
+
+/**
+ * Builds the entity-matching prompt (FR-6). Asks the model only the semantic
+ * question the deterministic key cannot answer: is this surface form the same
+ * real-world entity as a known one (Microsoft / MSFT / Майкрософт)? The id space
+ * is constrained to the supplied candidates, and the caller rejects any id not
+ * in the list, so the model cannot invent a merge.
+ */
+export function buildEntityMatchPrompt(input: EntityMatchInput): {
+  system: string;
+  user: string;
+} {
+  const system = [
+    'You decide whether a NEW named entity is the same real-world entity as one',
+    'of the KNOWN entities listed, despite a different spelling (abbreviation,',
+    'ticker, translation, or transliteration — e.g. Microsoft = MSFT = Майкрософт).',
+    'Respond with a single JSON object of this exact shape and nothing else:',
+    '{ "matchId": string | null }   // a known entity id, or null if it is new',
+    'Only return an id when you are confident it is the same entity. When in',
+    'doubt, return null. Never merge two genuinely different entities.',
+  ].join('\n');
+
+  const candidates = input.candidates
+    .map(
+      c =>
+        `- id=${c.id} | ${c.canonicalName}` +
+        (c.aliases.length > 0 ? ` (aliases: ${c.aliases.join(', ')})` : '')
+    )
+    .join('\n');
+
+  const user = [
+    `New entity type: ${input.type}`,
+    `New entity name: ${input.name}`,
+    '',
+    'Known entities of the same type:',
+    candidates,
   ].join('\n');
 
   return {system, user};

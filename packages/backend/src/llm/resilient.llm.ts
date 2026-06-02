@@ -4,6 +4,8 @@ import type {
   ArticleAnalysisResponse,
   DigestInput,
   DigestResponse,
+  EntityMatchInput,
+  EntityMatchResponse,
   LlmService,
 } from './llm.types';
 
@@ -39,6 +41,10 @@ export class ResilientLlmService implements LlmService {
 
   buildDigest(input: DigestInput): Promise<DigestResponse> {
     return this.withFailover(adapter => adapter.buildDigest(input));
+  }
+
+  matchEntities(input: EntityMatchInput): Promise<EntityMatchResponse> {
+    return this.withFailover(adapter => adapter.matchEntities(input));
   }
 
   /** Runs `call` against each adapter in turn, failing over on error. */

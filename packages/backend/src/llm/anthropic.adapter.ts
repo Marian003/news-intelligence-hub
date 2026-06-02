@@ -1,11 +1,17 @@
-import {parseAnalysis, parseDigest} from './analysis.schema';
+import {parseAnalysis, parseDigest, parseEntityMatch} from './analysis.schema';
 import {FetchLike, postJson} from './http';
-import {buildAnalysisPrompt, buildDigestPrompt} from './prompt';
+import {
+  buildAnalysisPrompt,
+  buildDigestPrompt,
+  buildEntityMatchPrompt,
+} from './prompt';
 import type {
   ArticleAnalysisInput,
   ArticleAnalysisResponse,
   DigestInput,
   DigestResponse,
+  EntityMatchInput,
+  EntityMatchResponse,
   LlmService,
 } from './llm.types';
 
@@ -51,6 +57,12 @@ export class AnthropicAdapter implements LlmService {
     const {system, user} = buildDigestPrompt(input);
     const {text, usage} = await this.message(system, user, input.maxTokens);
     return {result: parseDigest(text), usage, ...this.identity()};
+  }
+
+  async matchEntities(input: EntityMatchInput): Promise<EntityMatchResponse> {
+    const {system, user} = buildEntityMatchPrompt(input);
+    const {text, usage} = await this.message(system, user, input.maxTokens);
+    return {result: parseEntityMatch(text), usage, ...this.identity()};
   }
 
   private identity() {

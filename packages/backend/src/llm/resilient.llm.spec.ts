@@ -59,6 +59,12 @@ function adapter(
     model: 'm',
     analyzeArticle: vi.fn(impl),
     buildDigest: vi.fn(digestImpl),
+    matchEntities: vi.fn(async () => ({
+      result: {matchId: null},
+      usage: {promptTokens: 1, completionTokens: 1},
+      provider,
+      model: 'm',
+    })),
   };
 }
 

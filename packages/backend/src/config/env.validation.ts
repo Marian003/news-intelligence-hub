@@ -49,6 +49,16 @@ export const envSchema = z
     PREFILTER_MIN_CHARS: z.coerce.number().int().nonnegative().default(200),
     PREFILTER_MIN_WORDS: z.coerce.number().int().nonnegative().default(40),
 
+    // FR-6 fuzzy entity matching. Off by default so normal processing stays at
+    // one LLM call per article; when on, a novel surface form (e.g. MSFT,
+    // Cyrillic) is matched to an existing entity at most once, then cached as an
+    // alias key so it never calls again. Candidate set is capped for cost.
+    LLM_ENTITY_MATCHING: z
+      .enum(['true', 'false'])
+      .default('false')
+      .transform(value => value === 'true'),
+    ENTITY_MATCH_MAX_CANDIDATES: z.coerce.number().int().positive().default(20),
+
     // Cron expression for the scheduled poll of all active feeds.
     FEED_POLL_CRON: z.string().min(1).default('*/15 * * * *'),
     // Abort a feed HTTP fetch after this many milliseconds.

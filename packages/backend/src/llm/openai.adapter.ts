@@ -1,11 +1,17 @@
-import {parseAnalysis, parseDigest} from './analysis.schema';
+import {parseAnalysis, parseDigest, parseEntityMatch} from './analysis.schema';
 import {FetchLike, postJson} from './http';
-import {buildAnalysisPrompt, buildDigestPrompt} from './prompt';
+import {
+  buildAnalysisPrompt,
+  buildDigestPrompt,
+  buildEntityMatchPrompt,
+} from './prompt';
 import type {
   ArticleAnalysisInput,
   ArticleAnalysisResponse,
   DigestInput,
   DigestResponse,
+  EntityMatchInput,
+  EntityMatchResponse,
   LlmService,
 } from './llm.types';
 
@@ -52,6 +58,12 @@ export class OpenAiAdapter implements LlmService {
     const {system, user} = buildDigestPrompt(input);
     const {content, usage} = await this.chat(system, user, input.maxTokens);
     return {result: parseDigest(content), usage, ...this.identity()};
+  }
+
+  async matchEntities(input: EntityMatchInput): Promise<EntityMatchResponse> {
+    const {system, user} = buildEntityMatchPrompt(input);
+    const {content, usage} = await this.chat(system, user, input.maxTokens);
+    return {result: parseEntityMatch(content), usage, ...this.identity()};
   }
 
   private identity() {

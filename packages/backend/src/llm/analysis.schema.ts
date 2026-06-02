@@ -1,6 +1,10 @@
 import {ENTITY_TYPES, IMPORTANCE_LEVELS} from '@nih/shared';
 import {z} from 'zod';
-import type {ArticleAnalysisResult, DigestResult} from './llm.types';
+import type {
+  ArticleAnalysisResult,
+  DigestResult,
+  EntityMatchResult,
+} from './llm.types';
 
 /**
  * The exact JSON shape the model must return. Validated before anything touches
@@ -94,6 +98,31 @@ export function parseDigest(raw: string): DigestResult {
       .map(issue => `${issue.path.join('.')}: ${issue.message}`)
       .join('; ');
     throw new Error(`Digest output failed validation: ${issues}`);
+  }
+  return parsed.data;
+}
+
+/** Shape of the entity-match verdict: an id string or null. */
+export const entityMatchSchema = z.object({
+  matchId: z.string().trim().min(1).nullable().catch(null),
+});
+
+/** Parses and validates the matcher output; throws so bad output is never used. */
+export function parseEntityMatch(raw: string): EntityMatchResult {
+  let json: unknown;
+  try {
+    json = JSON.parse(extractJsonObject(raw));
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    throw new Error(`Entity-match output was not valid JSON: ${message}`);
+  }
+
+  const parsed = entityMatchSchema.safeParse(json);
+  if (!parsed.success) {
+    const issues = parsed.error.issues
+      .map(issue => `${issue.path.join('.')}: ${issue.message}`)
+      .join('; ');
+    throw new Error(`Entity-match output failed validation: ${issues}`);
   }
   return parsed.data;
 }
