@@ -101,10 +101,12 @@ packages/
   backend/         # NestJS API + workers + LLM + data layer (Drizzle)
     src/
       auth/        feeds/  articles/  entities/  categories/  axes/
-      graph/       regeneration/  processing/  ingestion/  llm/
-      workers/     queue/  database/ (schema, migrations, seed)  config/
+      graph/       regeneration/  digests/  telemetry/  processing/
+      ingestion/   llm/  workers/  queue/  config/
+      database/    # schema, migrations, seed
   frontend/        # React + Vite + Tailwind SPA
-    src/pages/     # Feed, Graph (react-flow), Entities, Feeds, Settings, Auth
+    src/pages/     # Feed, Graph, Entities, Digests, Telemetry, Feeds,
+                   # Settings, Auth
 scripts/
   check-unicode.mjs  # fails the build on non-printing Unicode (wired into lint)
 docker-compose.yml   # one-command full stack
@@ -152,13 +154,21 @@ falsely merging distinct entities.
 suffixes (Inc/Corp/Ltd/…), preserving non-Latin scripts; entities are canonical
 per `(user, type, normalizedKey)` and accumulate the surface forms as `aliases`.
 This merges Microsoft / Microsoft Corp. / microsoft with zero LLM cost and no
-false merges. Layer 2 (designed, not yet wired) is an LLM `matchEntities` pass
-for semantic aliases that share no normalized form (MSFT, Cyrillic), run in a
-bounded batch — never a pairwise scan.
+false merges. Layer 2 (implemented, env-gated by `LLM_ENTITY_MATCHING`) is an LLM
+`matchEntities` pass for semantic aliases that share no normalized form (MSFT, a
+Cyrillic spelling): only when both the deterministic key and the alias-key cache
+miss does the resolver ask the model whether the new surface form is one of the
+existing entities of that type. The verdict is cached in `entity_alias_keys`
+(`user, type, aliasKey -> entityId`), so each novel form is matched **at most
+once** and never re-calls; the candidate set is capped (`ENTITY_MATCH_MAX_
+CANDIDATES`), and an id the model returns that was not among the offered
+candidates is rejected, so it cannot invent a merge.
 **Alternatives.** Pure-LLM matching (expensive, risks false merges); a hardcoded
-ticker/acronym map (doesn't generalize).
-**Trade-offs.** The deterministic layer is precise and free but does not catch
-acronyms on its own; that is the honest current limitation (see Feature status).
+ticker/acronym map (doesn't generalize); a pairwise scan (quadratic).
+**Trade-offs.** Matching is off by default so normal processing keeps its
+one-call-per-article guarantee; turning it on adds at most one call per *novel*
+surface form (then cached), trading a little cost for catching acronyms and
+transliterations the deterministic layer cannot.
 
 ### ADR-3: LLM cost control and caching
 **Context.** The LLM is the most expensive resource; it must be economical and
@@ -168,9 +178,11 @@ before any call; (2) a content-hash cache (`llm_cache`, a `jsonb` row keyed by
 the article content hash, shared across users) means identical content is
 analyzed once; (3) at most one provider call per article, with a per-call token
 limit and concurrency both from env. Every real call is recorded in `llm_usage`
-(operation = processing | regeneration | digest, provider, model, tokens) for
-telemetry. Regeneration deliberately bypasses the cache because axis/category
-classification depends on the user's catalog.
+(operation = processing | regeneration | digest | entity_match, provider, model,
+tokens), aggregated per operation by `GET /telemetry/llm` and shown on the
+Telemetry page. Regeneration deliberately bypasses the cache because axis/category
+classification depends on the user's catalog; entity matching has its own cache
+(`entity_alias_keys`, see ADR-2) so it never repeats a verdict.
 **Alternatives.** No cache (simpler, costly); per-user caches (less sharing); a
 cache key including the catalog (correct for categories but kills cross-user
 reuse of the expensive part).
@@ -239,22 +251,25 @@ action, Bull Board behind basic-auth, one-command `docker compose` startup, a
 demo seed, and this README with ADRs.
 
 **Should — implemented:** cross-provider LLM failover (`ResilientLlmService`);
+period digests (US-11/FR-11 — day/week/month, optional category scope, built in a
+dedicated `digest` queue: deterministic aggregation of top entities/categories +
+key articles, then one LLM call for the narrative); extended graph filters (time
+window + free-text node search); a dedicated LLM telemetry dashboard
+(`GET /telemetry/llm` + Telemetry page, per-operation calls and tokens);
 meaningful unit tests on the critical parts (LLM adapter parse/validate/error,
-RSS/Atom parsing, the pre-filter, URL/hash, entity normalization, failover) — 52
-tests via Vitest.
+RSS/Atom parsing, the pre-filter, URL/hash, entity normalization, failover, the
+fuzzy-match resolver) — 59 tests via Vitest.
 
-**Should — not yet implemented:** period digests; extended graph filters (time
-window, graph text search); a dedicated LLM telemetry dashboard in the UI
-(telemetry is recorded in `llm_usage` and visible via the API/logs).
-
-**Could — not implemented:** edge animation along timestamps, timeline slider,
-category clustering, top-entities dashboard, full-text article search, graph
-export, article-to-article semantic similarity (the graph schema reserves a
-`similar` edge type for it).
+**Could — implemented:** edge animation along timestamps (the entity co-mention
+edges are animated). Not implemented: timeline slider, category clustering,
+top-entities dashboard, full-text article search, graph export, article-to-article
+semantic similarity (the graph schema reserves a `similar` edge type for it).
 
 **Known limitations.**
-- Entity dedup currently uses the deterministic layer only; the LLM
-  `matchEntities` pass for acronyms/transliterations (MSFT, Cyrillic) is designed
-  but not wired in (see ADR-2).
-- Regeneration and live feed polling call the LLM, so they need a real provider
-  key (or a local mock) in `.env`; the pre-loaded demo data needs none.
+- FR-6 LLM fuzzy entity matching (MSFT, Cyrillic) is implemented but **off by
+  default** (`LLM_ENTITY_MATCHING=false`) to keep the one-call-per-article
+  guarantee; enable it in `.env` (with a provider key) to merge acronyms /
+  transliterations. The deterministic layer always runs (see ADR-2).
+- Digests, regeneration, entity matching, and live feed polling call the LLM, so
+  they need a real provider key (or a local mock) in `.env`; the pre-loaded demo
+  data needs none, and a digest over an empty window completes without any call.
