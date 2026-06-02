@@ -37,13 +37,17 @@ export function DigestsPage() {
 
   return (
     <div className="space-y-5">
-      <h1 className="text-xl font-semibold text-slate-900">Digests</h1>
+      <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">
+        Digests
+      </h1>
 
-      <section className="space-y-3 rounded-lg border bg-white p-4">
+      <section className="space-y-3 nih-card p-4">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-sm text-slate-600">Period</span>
+          <span className="text-sm text-slate-600 dark:text-slate-300">
+            Period
+          </span>
           <select
-            className="rounded-md border border-slate-300 px-2 py-1.5 text-sm"
+            className="nih-input px-2 py-1.5 text-sm"
             value={period}
             onChange={e => setPeriod(e.target.value as Digest['period'])}
           >
@@ -68,8 +72,8 @@ export function DigestsPage() {
                 onClick={() => toggleCategory(c.id)}
                 className={`rounded-full border px-2.5 py-0.5 text-xs transition-colors ${
                   selectedCategories.includes(c.id)
-                    ? 'border-slate-900 bg-slate-900 text-white'
-                    : 'border-slate-300 bg-white text-slate-600 hover:bg-slate-50'
+                    ? 'border-indigo-600 bg-indigo-600 text-white'
+                    : 'border-slate-300 bg-white text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
                 }`}
               >
                 {c.name}
@@ -91,11 +95,13 @@ export function DigestsPage() {
                 <li key={d.id}>
                   <button
                     onClick={() => setOpenId(d.id)}
-                    className={`flex w-full items-center gap-2 rounded-lg border px-3 py-2 text-left text-sm hover:border-slate-300 ${
-                      openId === d.id ? 'border-slate-900' : 'bg-white'
+                    className={`flex w-full items-center gap-2 rounded-lg border bg-white px-3 py-2 text-left text-sm transition-colors hover:border-slate-300 dark:bg-slate-900 dark:hover:border-slate-600 ${
+                      openId === d.id
+                        ? 'border-indigo-500 dark:border-indigo-500'
+                        : 'border-slate-200 dark:border-slate-800'
                     }`}
                   >
-                    <span className="font-medium capitalize text-slate-800">
+                    <span className="font-medium capitalize text-slate-800 dark:text-slate-200">
                       {d.period}
                     </span>
                     <DigestStatusBadge status={d.status} />
@@ -115,7 +121,7 @@ export function DigestsPage() {
           {openId ? (
             <DigestDetail id={openId} onReady={() => digests.reload()} />
           ) : (
-            <p className="rounded-lg border bg-white p-6 text-sm text-slate-500">
+            <p className="nih-card p-6 text-sm text-slate-500">
               Generate a digest or pick one from the list to read it.
             </p>
           )}
@@ -177,7 +183,7 @@ function DigestDetail({id, onReady}: {id: string; onReady: () => void}) {
 
   if (digest.status === 'pending') {
     return (
-      <div className="rounded-lg border bg-white p-6 text-sm text-slate-500">
+      <div className="nih-card p-6 text-sm text-slate-500">
         Building this {digest.period} digest…
       </div>
     );
@@ -188,15 +194,15 @@ function DigestDetail({id, onReady}: {id: string; onReady: () => void}) {
 
   const r = digest.result;
   return (
-    <div className="space-y-5 rounded-lg border bg-white p-5">
+    <div className="space-y-5 nih-card p-5">
       <div className="flex items-center gap-2">
-        <h2 className="text-lg font-semibold capitalize text-slate-900">
+        <h2 className="text-lg font-semibold capitalize text-slate-900 dark:text-slate-100">
           {digest.period} digest
         </h2>
         <Badge kind="status" value={`${r.articleCount} articles`} />
       </div>
 
-      <p className="whitespace-pre-line text-sm leading-relaxed text-slate-700">
+      <p className="whitespace-pre-line text-sm leading-relaxed text-slate-700 dark:text-slate-300">
         {r.summary}
       </p>
 
@@ -206,7 +212,7 @@ function DigestDetail({id, onReady}: {id: string; onReady: () => void}) {
             <ul className="space-y-1 text-sm">
               {r.topEntities.map(e => (
                 <li key={e.name} className="flex justify-between">
-                  <span className="text-slate-700">
+                  <span className="text-slate-700 dark:text-slate-300">
                     {e.name}
                     <span className="text-slate-400"> · {e.type}</span>
                   </span>
@@ -223,7 +229,9 @@ function DigestDetail({id, onReady}: {id: string; onReady: () => void}) {
             <ul className="space-y-1 text-sm">
               {r.topCategories.map(c => (
                 <li key={c.name} className="flex justify-between">
-                  <span className="text-slate-700">{c.name}</span>
+                  <span className="text-slate-700 dark:text-slate-300">
+                    {c.name}
+                  </span>
                   <span className="text-slate-400">{c.articles}</span>
                 </li>
               ))}
@@ -243,7 +251,7 @@ function DigestDetail({id, onReady}: {id: string; onReady: () => void}) {
                   href={a.url}
                   target="_blank"
                   rel="noreferrer"
-                  className="text-indigo-600 hover:underline"
+                  className="text-indigo-600 dark:text-indigo-400 hover:underline"
                 >
                   {a.title}
                 </a>

@@ -7,8 +7,6 @@ build/
 *.tsbuildinfo
 
 # Local environment — secrets live here, never committed
-.env
-.env.local
 *.local
 
 # Logs
@@ -27,3 +25,4 @@ Thumbs.db
 
 # Claude Code local harness state (personal permission grants, not project config)
 .claude/
+config.bat

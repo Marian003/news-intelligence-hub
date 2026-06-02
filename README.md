@@ -248,7 +248,9 @@ limit, content-hash cache, pre-filter), structured logs + LLM cost telemetry,
 the article feed with filters + article card, the react-flow graph with typed
 edges and node-type/category filters, the axes settings UI with a regeneration
 action, Bull Board behind basic-auth, one-command `docker compose` startup, a
-demo seed, and this README with ADRs.
+demo seed, and this README with ADRs. The UI is a minimalist Tailwind SPA with
+an indigo accent and a light/dark theme (follows the OS by default, with a
+header toggle that persists the choice).
 
 **Should — implemented:** cross-provider LLM failover (`ResilientLlmService`);
 period digests (US-11/FR-11 — day/week/month, optional category scope, built in a

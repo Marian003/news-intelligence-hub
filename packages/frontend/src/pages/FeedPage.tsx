@@ -9,8 +9,7 @@ import {
 } from '../components/ui';
 import {api, type ArticleFilters, type ArticleListItem} from '../lib/api';
 
-const selectClass =
-  'rounded-md border border-slate-300 px-2 py-1.5 text-sm bg-white';
+const selectClass = 'nih-input px-2 py-1.5 text-sm';
 
 const WINDOW_SECONDS: Record<string, number> = {
   day: 86_400,
@@ -41,11 +40,13 @@ export function FeedPage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-semibold text-slate-900">Article feed</h1>
+      <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">
+        Article feed
+      </h1>
 
-      <div className="flex flex-wrap gap-2 rounded-lg border bg-white p-3">
+      <div className="flex flex-wrap gap-2 nih-card p-3">
         <input
-          className="flex-1 rounded-md border border-slate-300 px-3 py-1.5 text-sm"
+          className="flex-1 nih-input px-3 py-1.5 text-sm"
           placeholder="Search articles…"
           value={filters.q ?? ''}
           onChange={e => set({q: e.target.value || undefined})}
@@ -143,13 +144,15 @@ function ArticleRow({
   onOpen: () => void;
 }) {
   return (
-    <li className="rounded-lg border bg-white p-3 hover:border-slate-300">
+    <li className="nih-card p-3 hover:border-slate-300">
       <button onClick={onOpen} className="block w-full text-left">
         <div className="flex items-start gap-2">
           {article.importance && (
             <Badge kind="importance" value={article.importance} />
           )}
-          <span className="font-medium text-slate-900">{article.title}</span>
+          <span className="font-medium text-slate-900 dark:text-slate-100">
+            {article.title}
+          </span>
         </div>
         {article.source && (
           <p className="mt-0.5 text-xs font-medium text-slate-400">
@@ -157,7 +160,7 @@ function ArticleRow({
           </p>
         )}
         {article.summary && (
-          <p className="mt-1 line-clamp-2 text-sm text-slate-600">
+          <p className="mt-1 line-clamp-2 text-sm text-slate-600 dark:text-slate-300">
             {article.summary}
           </p>
         )}
@@ -166,7 +169,7 @@ function ArticleRow({
             {article.entities.slice(0, 6).map(e => (
               <span
                 key={e.name}
-                className="rounded bg-slate-50 px-1.5 py-0.5 text-xs text-slate-600 ring-1 ring-slate-200"
+                className="rounded bg-slate-50 dark:bg-slate-800/60 px-1.5 py-0.5 text-xs text-slate-600 dark:text-slate-300 ring-1 ring-slate-200 dark:ring-slate-700"
               >
                 {e.name}
               </span>
@@ -180,12 +183,15 @@ function ArticleRow({
         )}
         <div className="mt-2 flex flex-wrap items-center gap-1 text-xs text-slate-500">
           {article.categories.map(c => (
-            <span key={c} className="rounded bg-slate-100 px-1.5 py-0.5">
+            <span
+              key={c}
+              className="rounded bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5"
+            >
               {c}
             </span>
           ))}
           {article.similarCount > 0 && (
-            <span className="rounded bg-indigo-50 px-1.5 py-0.5 text-indigo-700">
+            <span className="rounded bg-indigo-50 dark:bg-indigo-500/15 px-1.5 py-0.5 text-indigo-700 dark:text-indigo-300">
               {article.similarCount} similar in other sources
             </span>
           )}
@@ -204,12 +210,12 @@ function ArticleDrawer({id, onClose}: {id: string; onClose: () => void}) {
       onClick={onClose}
     >
       <div
-        className="nih-slide-in h-full w-full max-w-md overflow-y-auto bg-white p-5 shadow-xl"
+        className="nih-slide-in h-full w-full max-w-md overflow-y-auto bg-white p-5 shadow-xl dark:bg-slate-900"
         onClick={e => e.stopPropagation()}
       >
         <button
           onClick={onClose}
-          className="mb-3 text-sm text-slate-400 hover:text-slate-700"
+          className="mb-3 text-sm text-slate-400 hover:text-slate-700 dark:text-slate-300"
         >
           ✕ Close
         </button>
@@ -226,7 +232,7 @@ function ArticleDrawer({id, onClose}: {id: string; onClose: () => void}) {
                 )}
                 <Badge kind="status" value={card.data.status} />
               </div>
-              <h2 className="text-lg font-semibold text-slate-900">
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
                 {card.data.title}
               </h2>
               {card.data.source && (
@@ -238,14 +244,16 @@ function ArticleDrawer({id, onClose}: {id: string; onClose: () => void}) {
                 href={card.data.url}
                 target="_blank"
                 rel="noreferrer"
-                className="break-all text-xs text-indigo-600 underline"
+                className="break-all text-xs text-indigo-600 dark:text-indigo-400 underline"
               >
                 {card.data.url}
               </a>
             </div>
 
             {card.data.summary && (
-              <p className="text-sm text-slate-700">{card.data.summary}</p>
+              <p className="text-sm text-slate-700 dark:text-slate-300">
+                {card.data.summary}
+              </p>
             )}
 
             <Section title="Entities">
@@ -253,7 +261,7 @@ function ArticleDrawer({id, onClose}: {id: string; onClose: () => void}) {
                 {card.data.entities.map(e => (
                   <span
                     key={e.id}
-                    className="rounded bg-slate-100 px-1.5 py-0.5 text-xs text-slate-700"
+                    className="rounded bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 text-xs text-slate-700 dark:text-slate-300"
                   >
                     {e.canonicalName}
                     <span className="text-slate-400"> · {e.type}</span>
@@ -268,7 +276,7 @@ function ArticleDrawer({id, onClose}: {id: string; onClose: () => void}) {
                 {card.data.categories.map(c => (
                   <span
                     key={c}
-                    className="rounded bg-slate-100 px-1.5 py-0.5 text-xs"
+                    className="rounded bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 text-xs"
                   >
                     {c}
                   </span>
@@ -282,7 +290,7 @@ function ArticleDrawer({id, onClose}: {id: string; onClose: () => void}) {
                 {card.data.axisValues.map(a => (
                   <span
                     key={a.axis}
-                    className="rounded bg-slate-100 px-1.5 py-0.5 text-xs"
+                    className="rounded bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 text-xs"
                   >
                     {a.axis}: <span className="font-medium">{a.value}</span>
                   </span>
@@ -297,7 +305,10 @@ function ArticleDrawer({id, onClose}: {id: string; onClose: () => void}) {
               >
                 <ul className="space-y-1 text-xs">
                   {card.data.similar.map(s => (
-                    <li key={s.id} className="truncate text-slate-600">
+                    <li
+                      key={s.id}
+                      className="truncate text-slate-600 dark:text-slate-300"
+                    >
                       {s.title}
                     </li>
                   ))}

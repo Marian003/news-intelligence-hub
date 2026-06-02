@@ -199,11 +199,11 @@ export function GraphPage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-semibold text-slate-900">
+      <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">
         Relationship graph
       </h1>
 
-      <div className="flex flex-wrap items-center gap-3 rounded-lg border bg-white p-3 text-sm">
+      <div className="flex flex-wrap items-center gap-3 nih-card p-3 text-sm">
         <label className="flex items-center gap-1">
           <input
             type="checkbox"
@@ -221,7 +221,7 @@ export function GraphPage() {
           Entities
         </label>
         <select
-          className="rounded-md border border-slate-300 px-2 py-1.5"
+          className="nih-input px-2 py-1.5"
           value={importance}
           onChange={e => setImportance(e.target.value)}
         >
@@ -231,7 +231,7 @@ export function GraphPage() {
           <option value="junk">Junk</option>
         </select>
         <select
-          className="rounded-md border border-slate-300 px-2 py-1.5"
+          className="nih-input px-2 py-1.5"
           value={categoryId}
           onChange={e => setCategoryId(e.target.value)}
         >
@@ -243,7 +243,7 @@ export function GraphPage() {
           ))}
         </select>
         <select
-          className="rounded-md border border-slate-300 px-2 py-1.5"
+          className="nih-input px-2 py-1.5"
           value={timeWindow}
           onChange={e => setTimeWindow(e.target.value)}
         >
@@ -253,7 +253,7 @@ export function GraphPage() {
           <option value="month">Last 30 days</option>
         </select>
         <input
-          className="rounded-md border border-slate-300 px-2 py-1.5"
+          className="nih-input px-2 py-1.5"
           placeholder="Search nodes…"
           value={search}
           onChange={e => setSearch(e.target.value)}
@@ -264,8 +264,10 @@ export function GraphPage() {
       </div>
 
       {bounds && effectiveCutoff !== null && (
-        <div className="flex items-center gap-3 rounded-lg border bg-white p-3 text-sm">
-          <span className="whitespace-nowrap text-slate-600">Timeline</span>
+        <div className="flex items-center gap-3 nih-card p-3 text-sm">
+          <span className="whitespace-nowrap text-slate-600 dark:text-slate-300">
+            Timeline
+          </span>
           <input
             type="range"
             className="flex-1 accent-slate-900"
@@ -281,7 +283,7 @@ export function GraphPage() {
           {cutoff !== null && cutoff < bounds.max && (
             <button
               onClick={() => setCutoff(null)}
-              className="text-xs text-slate-400 hover:text-slate-700"
+              className="text-xs text-slate-400 hover:text-slate-700 dark:text-slate-300"
             >
               Reset
             </button>
@@ -289,7 +291,7 @@ export function GraphPage() {
         </div>
       )}
 
-      <div className="relative h-[70vh] overflow-hidden rounded-lg border bg-white">
+      <div className="relative h-[70vh] overflow-hidden nih-card">
         {graph.loading ? (
           <Spinner />
         ) : graph.error ? (
@@ -323,7 +325,7 @@ export function GraphPage() {
 
 function GraphLegend() {
   return (
-    <div className="absolute left-3 top-3 z-10 rounded-lg border bg-white/90 p-2 text-[11px] shadow-sm backdrop-blur">
+    <div className="absolute left-3 top-3 z-10 nih-card/90 p-2 text-[11px] shadow-sm backdrop-blur">
       <div className="mb-1 font-semibold text-slate-500">Entities</div>
       <div className="flex flex-col gap-0.5">
         {(Object.keys(ENTITY_COLORS) as EntityType[]).map(type => (
@@ -332,18 +334,20 @@ function GraphLegend() {
               className="h-2.5 w-2.5 rounded-full"
               style={{background: ENTITY_COLORS[type]}}
             />
-            <span className="capitalize text-slate-600">{type}</span>
+            <span className="capitalize text-slate-600 dark:text-slate-300">
+              {type}
+            </span>
           </span>
         ))}
       </div>
       <div className="mb-1 mt-2 font-semibold text-slate-500">Edges</div>
       <span className="flex items-center gap-1.5">
         <span className="h-0.5 w-4 bg-slate-300" />
-        <span className="text-slate-600">mentions</span>
+        <span className="text-slate-600 dark:text-slate-300">mentions</span>
       </span>
       <span className="flex items-center gap-1.5">
         <span className="h-0.5 w-4 bg-indigo-500" />
-        <span className="text-slate-600">co-mention</span>
+        <span className="text-slate-600 dark:text-slate-300">co-mention</span>
       </span>
     </div>
   );
@@ -357,10 +361,10 @@ function NodeDetail({
   onClose: () => void;
 }) {
   return (
-    <div className="absolute right-3 top-3 z-10 w-72 rounded-lg border bg-white p-4 shadow-lg">
+    <div className="absolute right-3 top-3 z-10 w-72 nih-card p-4 shadow-lg">
       <button
         onClick={onClose}
-        className="mb-2 text-xs text-slate-400 hover:text-slate-700"
+        className="mb-2 text-xs text-slate-400 hover:text-slate-700 dark:text-slate-300"
       >
         ✕ Close
       </button>
@@ -383,15 +387,19 @@ function ArticleDetail({id}: {id: string}) {
       <span className="text-xs uppercase tracking-wide text-slate-400">
         Article
       </span>
-      <h3 className="font-medium text-slate-900">{card.data.title}</h3>
+      <h3 className="font-medium text-slate-900 dark:text-slate-100">
+        {card.data.title}
+      </h3>
       {card.data.summary && (
-        <p className="text-sm text-slate-600">{card.data.summary}</p>
+        <p className="text-sm text-slate-600 dark:text-slate-300">
+          {card.data.summary}
+        </p>
       )}
       <a
         href={card.data.url}
         target="_blank"
         rel="noreferrer"
-        className="block break-all text-xs text-indigo-600 underline"
+        className="block break-all text-xs text-indigo-600 dark:text-indigo-400 underline"
       >
         Open source
       </a>
@@ -409,8 +417,10 @@ function EntityDetail({id}: {id: string}) {
       <span className="text-xs uppercase tracking-wide text-slate-400">
         {card.data.type}
       </span>
-      <h3 className="font-medium text-slate-900">{card.data.canonicalName}</h3>
-      <p className="text-sm text-slate-600">
+      <h3 className="font-medium text-slate-900 dark:text-slate-100">
+        {card.data.canonicalName}
+      </h3>
+      <p className="text-sm text-slate-600 dark:text-slate-300">
         {card.data.mentionCount} mentions · {card.data.aliases.length} aliases
       </p>
       {card.data.aliases.length > 1 && (

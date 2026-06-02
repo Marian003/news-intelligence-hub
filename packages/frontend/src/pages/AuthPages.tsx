@@ -11,9 +11,11 @@ import {api, ApiError, type RegisterResult} from '../lib/api';
 
 function CenterCard({title, children}: {title: string; children: ReactNode}) {
   return (
-    <div className="flex min-h-full items-center justify-center bg-slate-50 p-4">
-      <div className="w-full max-w-sm rounded-xl border bg-white p-6 shadow-sm">
-        <h1 className="mb-4 text-lg font-semibold text-slate-900">{title}</h1>
+    <div className="flex min-h-full items-center justify-center bg-slate-50 p-4 dark:bg-slate-950">
+      <div className="w-full max-w-sm nih-card rounded-xl p-6 shadow-sm">
+        <h1 className="mb-4 text-lg font-semibold text-slate-900 dark:text-slate-100">
+          {title}
+        </h1>
         {children}
       </div>
     </div>
@@ -21,7 +23,7 @@ function CenterCard({title, children}: {title: string; children: ReactNode}) {
 }
 
 const inputClass =
-  'w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none';
+  'w-full nih-input px-3 py-2 text-sm focus:border-slate-500 focus:outline-none';
 
 export function AuthPage({mode}: {mode: 'login' | 'register'}) {
   const {login} = useAuth();
@@ -54,13 +56,13 @@ export function AuthPage({mode}: {mode: 'login' | 'register'}) {
   if (registered) {
     return (
       <CenterCard title="Almost there">
-        <p className="mb-3 text-sm text-slate-600">
+        <p className="mb-3 text-sm text-slate-600 dark:text-slate-300">
           No real email is sent in development. Use this confirmation link:
         </p>
         {registered.confirmationUrl ? (
           <a
             href={registered.confirmationUrl}
-            className="block break-all rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-800"
+            className="block break-all rounded-md bg-amber-50 dark:bg-amber-500/15 px-3 py-2 text-xs text-amber-800 dark:text-amber-300"
           >
             <span className="font-semibold">DEV MODE · </span>
             {registered.confirmationUrl}
@@ -69,7 +71,10 @@ export function AuthPage({mode}: {mode: 'login' | 'register'}) {
           <p className="text-sm text-slate-500">Check the service log.</p>
         )}
         <p className="mt-4 text-sm">
-          <Link to="/login" className="font-medium text-slate-900 underline">
+          <Link
+            to="/login"
+            className="font-medium text-slate-900 dark:text-slate-100 underline"
+          >
             Back to log in
           </Link>
         </p>
@@ -107,7 +112,7 @@ export function AuthPage({mode}: {mode: 'login' | 'register'}) {
             No account?{' '}
             <Link
               to="/register"
-              className="font-medium text-slate-900 underline"
+              className="font-medium text-slate-900 dark:text-slate-100 underline"
             >
               Register
             </Link>
@@ -115,7 +120,10 @@ export function AuthPage({mode}: {mode: 'login' | 'register'}) {
         ) : (
           <>
             Have an account?{' '}
-            <Link to="/login" className="font-medium text-slate-900 underline">
+            <Link
+              to="/login"
+              className="font-medium text-slate-900 dark:text-slate-100 underline"
+            >
               Log in
             </Link>
           </>
@@ -148,7 +156,10 @@ export function ConfirmPage() {
         </p>
       )}
       <p className="mt-4 text-sm">
-        <Link to="/login" className="font-medium text-slate-900 underline">
+        <Link
+          to="/login"
+          className="font-medium text-slate-900 dark:text-slate-100 underline"
+        >
           Go to log in
         </Link>
       </p>

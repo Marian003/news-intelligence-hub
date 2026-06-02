@@ -14,7 +14,9 @@ export function EntitiesPage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-semibold text-slate-900">Entities</h1>
+      <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">
+        Entities
+      </h1>
       {entities.loading ? (
         <Skeleton rows={6} />
       ) : entities.error ? (
@@ -47,13 +49,13 @@ function EntityRow({
   onOpen: () => void;
 }) {
   return (
-    <li className="rounded-lg border bg-white p-3 hover:border-slate-300">
+    <li className="nih-card p-3 hover:border-slate-300">
       <button onClick={onOpen} className="block w-full text-left">
         <div className="flex items-center gap-2">
-          <span className="font-medium text-slate-900">
+          <span className="font-medium text-slate-900 dark:text-slate-100">
             {entity.canonicalName}
           </span>
-          <span className="rounded bg-slate-100 px-1.5 py-0.5 text-xs text-slate-500">
+          <span className="rounded bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 text-xs text-slate-500">
             {entity.type}
           </span>
           <span className="ml-auto text-xs text-slate-500">
@@ -79,12 +81,12 @@ function EntityDrawer({id, onClose}: {id: string; onClose: () => void}) {
       onClick={onClose}
     >
       <div
-        className="nih-slide-in h-full w-full max-w-md overflow-y-auto bg-white p-5 shadow-xl"
+        className="nih-slide-in h-full w-full max-w-md overflow-y-auto bg-white p-5 shadow-xl dark:bg-slate-900"
         onClick={e => e.stopPropagation()}
       >
         <button
           onClick={onClose}
-          className="mb-3 text-sm text-slate-400 hover:text-slate-700"
+          className="mb-3 text-sm text-slate-400 hover:text-slate-700 dark:text-slate-300"
         >
           ✕ Close
         </button>
@@ -95,15 +97,17 @@ function EntityDrawer({id, onClose}: {id: string; onClose: () => void}) {
         ) : card.data ? (
           <div className="space-y-3">
             <div className="flex items-center gap-2">
-              <h2 className="text-lg font-semibold text-slate-900">
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
                 {card.data.canonicalName}
               </h2>
-              <span className="rounded bg-slate-100 px-1.5 py-0.5 text-xs text-slate-500">
+              <span className="rounded bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 text-xs text-slate-500">
                 {card.data.type}
               </span>
             </div>
             {card.data.description && (
-              <p className="text-sm text-slate-700">{card.data.description}</p>
+              <p className="text-sm text-slate-700 dark:text-slate-300">
+                {card.data.description}
+              </p>
             )}
             <dl className="grid grid-cols-2 gap-2 text-sm">
               <Stat label="Mentions" value={String(card.data.mentionCount)} />
@@ -119,7 +123,7 @@ function EntityDrawer({id, onClose}: {id: string; onClose: () => void}) {
                 {card.data.aliases.map(a => (
                   <span
                     key={a}
-                    className="rounded bg-slate-100 px-1.5 py-0.5 text-xs"
+                    className="rounded bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 text-xs"
                   >
                     {a}
                   </span>
@@ -136,11 +140,11 @@ function EntityDrawer({id, onClose}: {id: string; onClose: () => void}) {
                   {card.data.relatedEntities.map(r => (
                     <li
                       key={r.id}
-                      className="flex items-center gap-2 text-sm text-slate-700"
+                      className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300"
                     >
                       <span>{r.canonicalName}</span>
                       <span className="text-xs text-slate-400">{r.type}</span>
-                      <span className="ml-auto rounded bg-indigo-50 px-1.5 py-0.5 text-xs text-indigo-700">
+                      <span className="ml-auto rounded bg-indigo-50 dark:bg-indigo-500/15 px-1.5 py-0.5 text-xs text-indigo-700 dark:text-indigo-300">
                         {r.weight}
                       </span>
                     </li>
@@ -166,9 +170,11 @@ function EntityDrawer({id, onClose}: {id: string; onClose: () => void}) {
 
 function Stat({label, value}: {label: string; value: string}) {
   return (
-    <div className="rounded-md bg-slate-50 p-2">
+    <div className="rounded-md bg-slate-50 dark:bg-slate-800/60 p-2">
       <dt className="text-xs text-slate-400">{label}</dt>
-      <dd className="font-medium text-slate-800">{value}</dd>
+      <dd className="font-medium text-slate-800 dark:text-slate-200">
+        {value}
+      </dd>
     </div>
   );
 }
@@ -188,7 +194,7 @@ function ActivityChart({
           title={`${new Date(point.ts * 1000).toLocaleDateString()}: ${point.count}`}
         >
           <div
-            className="w-full rounded-t bg-slate-800"
+            className="w-full rounded-t bg-indigo-500 dark:bg-indigo-400"
             style={{height: `${Math.round((point.count / max) * 100)}%`}}
           />
         </div>

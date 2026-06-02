@@ -39,18 +39,20 @@ export function FeedsPage() {
 
   return (
     <div className="space-y-5">
-      <h1 className="text-xl font-semibold text-slate-900">Feeds</h1>
+      <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">
+        Feeds
+      </h1>
 
-      <div className="rounded-lg border bg-white p-4">
+      <div className="nih-card p-4">
         <div className="flex flex-col gap-2 sm:flex-row">
           <input
-            className="flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm"
+            className="flex-1 nih-input px-3 py-2 text-sm"
             placeholder="https://example.com/feed.xml"
             value={url}
             onChange={e => setUrl(e.target.value)}
           />
           <input
-            className="rounded-md border border-slate-300 px-3 py-2 text-sm sm:w-48"
+            className="nih-input px-3 py-2 text-sm sm:w-48"
             placeholder="Title (optional)"
             value={title}
             onChange={e => setTitle(e.target.value)}
@@ -91,10 +93,10 @@ function FeedRow({
   onAction: (action: Promise<unknown>, message: string) => void;
 }) {
   return (
-    <li className="rounded-lg border bg-white p-3 transition hover:border-slate-300 hover:shadow-sm">
+    <li className="nih-card p-3 transition hover:border-slate-300 hover:shadow-sm">
       <div className="flex flex-wrap items-center gap-2">
         <Badge kind="status" value={feed.status} />
-        <span className="font-medium text-slate-900">
+        <span className="font-medium text-slate-900 dark:text-slate-100">
           {feed.title ?? feed.url}
         </span>
         <span className="ml-auto flex gap-1">

@@ -3,12 +3,14 @@ import {Button, ErrorNote, Skeleton, useAsync} from '../components/ui';
 import {useToast} from '../components/Toast';
 import {api, type Axis, type Category} from '../lib/api';
 
-const input = 'rounded-md border border-slate-300 px-3 py-1.5 text-sm';
+const input = 'nih-input px-3 py-1.5 text-sm';
 
 export function SettingsPage() {
   return (
     <div className="space-y-8">
-      <h1 className="text-xl font-semibold text-slate-900">Settings</h1>
+      <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">
+        Settings
+      </h1>
       <CategoriesSection />
       <AxesSection />
       <RegenerateSection />
@@ -60,7 +62,9 @@ function RegenerateSection() {
 
   return (
     <section className="space-y-3">
-      <h2 className="font-semibold text-slate-800">Re-analyze articles</h2>
+      <h2 className="font-semibold text-slate-800 dark:text-slate-200">
+        Re-analyze articles
+      </h2>
       <p className="text-sm text-slate-500">
         After changing axes or categories, re-run the LLM analysis of your
         stored articles under the new set. It runs in the background — the app
@@ -70,9 +74,9 @@ function RegenerateSection() {
         {running ? `Re-analyzing… ${percent}%` : 'Re-analyze all articles'}
       </Button>
       {running && (
-        <div className="h-2 w-full max-w-md overflow-hidden rounded bg-slate-100">
+        <div className="h-2 w-full max-w-md overflow-hidden rounded bg-slate-100 dark:bg-slate-800">
           <div
-            className="h-full bg-slate-900 transition-all"
+            className="h-full bg-indigo-600 transition-all"
             style={{width: `${percent}%`}}
           />
         </div>
@@ -112,7 +116,9 @@ function CategoriesSection() {
 
   return (
     <section className="space-y-3">
-      <h2 className="font-semibold text-slate-800">Categories</h2>
+      <h2 className="font-semibold text-slate-800 dark:text-slate-200">
+        Categories
+      </h2>
       <div className="flex gap-2">
         <input
           className={input}
@@ -132,7 +138,7 @@ function CategoriesSection() {
           {categories.data?.map((c: Category) => (
             <span
               key={c.id}
-              className="flex items-center gap-2 rounded-full border bg-white px-3 py-1 text-sm"
+              className="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-sm dark:border-slate-700 dark:bg-slate-800"
             >
               {c.name}
               <button
@@ -178,7 +184,9 @@ function AxesSection() {
 
   return (
     <section className="space-y-3">
-      <h2 className="font-semibold text-slate-800">Classification axes</h2>
+      <h2 className="font-semibold text-slate-800 dark:text-slate-200">
+        Classification axes
+      </h2>
       <p className="text-sm text-slate-500">
         Axes are sent to the model when articles are analyzed. Editing them
         affects future analyses; use “Re-analyze all articles” below to refresh
@@ -231,9 +239,11 @@ function AxisRow({axis, onChange}: {axis: Axis; onChange: () => void}) {
   };
 
   return (
-    <li className="rounded-lg border bg-white p-3">
+    <li className="nih-card p-3">
       <div className="flex items-center gap-2">
-        <span className="font-medium text-slate-900">{axis.name}</span>
+        <span className="font-medium text-slate-900 dark:text-slate-100">
+          {axis.name}
+        </span>
         <span className="ml-auto flex gap-1">
           <Button variant="ghost" onClick={() => setEditing(v => !v)}>
             {editing ? 'Cancel' : 'Edit'}
@@ -263,7 +273,7 @@ function AxisRow({axis, onChange}: {axis: Axis; onChange: () => void}) {
           {axis.values.map(v => (
             <span
               key={v}
-              className="rounded bg-slate-100 px-1.5 py-0.5 text-xs"
+              className="rounded bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 text-xs"
             >
               {v}
             </span>
