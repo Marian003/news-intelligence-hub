@@ -37,8 +37,8 @@ export function TelemetryPage() {
             />
           </div>
 
-          <div className="overflow-hidden rounded-lg border bg-white">
-            <table className="w-full text-left text-sm">
+          <div className="overflow-x-auto rounded-lg border bg-white">
+            <table className="w-full min-w-[32rem] text-left text-sm">
               <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-400">
                 <tr>
                   <th className="px-4 py-2">Operation</th>
