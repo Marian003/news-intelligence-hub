@@ -1,0 +1,46 @@
+# Redis: the BullMQ broker for feed-poll, article-process and digest jobs.
+#
+# Intentionally NO PersistentVolumeClaim. Redis here holds only in-flight job
+# state, and every job is reconstructible from Postgres (the feed list and the
+# articles are the durable truth). Losing the queue costs one polling cycle, not
+# data - so a volume would add operational weight for no real protection.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  namespace: news-hub
+  labels: {app: redis}
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: redis}
+  template:
+    metadata:
+      labels: {app: redis}
+    spec:
+      containers:
+        - name: redis
+          image: redis:7-alpine
+          ports:
+            - {name: redis, containerPort: 6379}
+          readinessProbe:
+            exec: {command: ['redis-cli', 'ping']}
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          livenessProbe:
+            exec: {command: ['redis-cli', 'ping']}
+            initialDelaySeconds: 15
+            periodSeconds: 15
+          resources:
+            requests: {cpu: 50m, memory: 64Mi}
+            limits: {memory: 256Mi}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  namespace: news-hub
+spec:
+  selector: {app: redis}
+  ports:
+    - {name: redis, port: 6379, targetPort: redis}

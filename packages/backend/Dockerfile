@@ -31,4 +31,13 @@ COPY --from=builder /app/packages/shared/dist packages/shared/dist
 COPY --from=builder /app/packages/backend/dist packages/backend/dist
 # Committed SQL migrations, applied at runtime by the migrate entrypoint.
 COPY --from=builder /app/packages/backend/drizzle packages/backend/drizzle
+# Drop to the unprivileged user the node images already ship (node = 1000:1000).
+# The app only ever reads from the image (all state is in Postgres/Redis), so
+# root is not needed at runtime - which lets the Kubernetes manifests also set
+# readOnlyRootFilesystem and runAsNonRoot.
+#
+# Numeric, not `USER node`: with a name, the kubelet cannot prove the user is
+# non-root before starting the container and refuses the pod outright
+# ("image has non-numeric user"). The numeric form is verifiable.
+USER 1000:1000
 CMD ["node", "packages/backend/dist/main.js"]

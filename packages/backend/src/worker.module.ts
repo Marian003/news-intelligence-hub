@@ -4,6 +4,7 @@ import {validateEnv} from './config/env.validation';
 import {DatabaseModule} from './database/database.module';
 import {LlmModule} from './llm/llm.module';
 import {QueueModule} from './queue/queue.module';
+import {WorkerObservabilityModule} from './observability/worker-observability.module';
 import {WorkersModule} from './workers/workers.module';
 
 /**
@@ -16,6 +17,7 @@ import {WorkersModule} from './workers/workers.module';
     ConfigModule.forRoot({isGlobal: true, validate: validateEnv}),
     DatabaseModule,
     QueueModule,
+    WorkerObservabilityModule,
     LlmModule,
     WorkersModule,
   ],

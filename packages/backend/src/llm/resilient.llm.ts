@@ -19,7 +19,20 @@ import type {
 export class ResilientLlmService implements LlmService {
   private readonly logger = new Logger(ResilientLlmService.name);
 
-  constructor(private readonly adapters: LlmService[]) {
+  /**
+   * @param adapters Providers in priority order.
+   * @param onCall Optional observer invoked once per provider attempt with its
+   *   outcome. Kept as a plain callback rather than an injected metrics service
+   *   so this class stays free of Nest and framework-less in its unit tests;
+   *   the module wires it to the Prometheus counter.
+   */
+  constructor(
+    private readonly adapters: LlmService[],
+    private readonly onCall?: (
+      provider: string,
+      outcome: 'success' | 'failure'
+    ) => void
+  ) {
     if (adapters.length === 0) {
       throw new Error('ResilientLlmService needs at least one adapter');
     }
@@ -55,8 +68,11 @@ export class ResilientLlmService implements LlmService {
     for (let i = 0; i < this.adapters.length; i++) {
       const adapter = this.adapters[i];
       try {
-        return await call(adapter);
+        const result = await call(adapter);
+        this.onCall?.(adapter.provider, 'success');
+        return result;
       } catch (err) {
+        this.onCall?.(adapter.provider, 'failure');
         lastError = err;
         const message = err instanceof Error ? err.message : String(err);
         const next = this.adapters[i + 1];

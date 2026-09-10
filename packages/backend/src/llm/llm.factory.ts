@@ -13,6 +13,8 @@ export interface LlmFactoryConfig {
   anthropic: {apiKey: string; model: string; baseUrl?: string};
   /** Optional fetch override (tests). */
   fetchImpl?: FetchLike;
+  /** Optional per-attempt observer, wired to the Prometheus counter. */
+  onCall?: (provider: string, outcome: 'success' | 'failure') => void;
 }
 
 function buildAdapter(
@@ -65,5 +67,5 @@ export function createResilientLlmService(
   if (otherKey) {
     adapters.push(buildAdapter(otherProvider, config));
   }
-  return new ResilientLlmService(adapters);
+  return new ResilientLlmService(adapters, config.onCall);
 }

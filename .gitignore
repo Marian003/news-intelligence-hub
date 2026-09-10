@@ -7,7 +7,10 @@ build/
 *.tsbuildinfo
 
 # Local environment — secrets live here, never committed
+.env
 *.local
+# Rendered Kubernetes Secret (contains real keys) — only the example is tracked
+k8s/secret.yaml
 
 # Logs
 *.log

@@ -1,0 +1,60 @@
+# BullMQ worker. Same image as the API, different command - so the two can never
+# drift out of sync, and only one image needs building and loading.
+#
+# No Service and no Ingress path: nothing calls the worker, it pulls jobs from
+# Redis. It is scaled independently of the API precisely because its load
+# profile is different (bursty LLM work, not user requests) - see ADR-4.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: worker
+  namespace: news-hub
+  labels: {app: worker}
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: worker}
+  template:
+    metadata:
+      labels: {app: worker}
+      annotations:
+        prometheus.io/scrape: 'true'
+        prometheus.io/port: '9091'
+        prometheus.io/path: '/metrics'
+    spec:
+      # An LLM call in flight should be allowed to finish rather than be killed
+      # mid-request and retried (which would pay for the same article twice).
+      terminationGracePeriodSeconds: 60
+      containers:
+        - name: worker
+          image: news-hub/api:local
+          imagePullPolicy: IfNotPresent
+          command: ['node', 'packages/backend/dist/worker.js']
+          ports:
+            - {name: metrics, containerPort: 9091}
+          envFrom:
+            - configMapRef: {name: app-config}
+            - secretRef: {name: app-secrets}
+          # The worker has no API surface, but it does serve /healthz on its
+          # metrics port - so its probes assert the process is actually
+          # responsive rather than merely "not exited".
+          readinessProbe:
+            httpGet: {path: /healthz, port: metrics}
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: {path: /healthz, port: metrics}
+            initialDelaySeconds: 30
+            periodSeconds: 20
+            failureThreshold: 3
+          resources:
+            requests: {cpu: 100m, memory: 192Mi}
+            limits: {memory: 512Mi}
+          securityContext:
+            runAsNonRoot: true
+            # Matches `USER 1000:1000` in the backend Dockerfile.
+            runAsUser: 1000
+            runAsGroup: 1000
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: ['ALL']}

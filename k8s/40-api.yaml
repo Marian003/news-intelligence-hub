@@ -1,0 +1,76 @@
+# NestJS API. Stateless (JWT bearer auth, no server-side sessions), so replicas
+# scale horizontally without any sticky-session concern.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api
+  namespace: news-hub
+  labels: {app: api}
+spec:
+  replicas: 2
+  selector:
+    matchLabels: {app: api}
+  template:
+    metadata:
+      labels: {app: api}
+      annotations:
+        # Scrape config for a future Prometheus - harmless without one, and it
+        # means adding Prometheus later needs no change to this Deployment.
+        prometheus.io/scrape: 'true'
+        prometheus.io/port: '3000'
+        prometheus.io/path: '/metrics'
+    spec:
+      containers:
+        - name: api
+          image: news-hub/api:local
+          imagePullPolicy: IfNotPresent
+          ports:
+            - {name: http, containerPort: 3000}
+          envFrom:
+            - configMapRef: {name: app-config}
+            - secretRef: {name: app-secrets}
+          # READINESS uses /health, which actively pings Postgres and Redis: a
+          # pod that cannot reach its dependencies should be pulled out of the
+          # Service and get no traffic.
+          readinessProbe:
+            httpGet: {path: /health, port: http}
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 3
+          # LIVENESS is deliberately a TCP check, NOT /health. Restarting the API
+          # cannot fix a database outage; wiring liveness to a dependency-aware
+          # endpoint would turn "Postgres is briefly down" into "every API pod
+          # CrashLoopBackOffs", making the incident worse. Liveness answers only
+          # "is this process wedged?".
+          livenessProbe:
+            tcpSocket: {port: http}
+            initialDelaySeconds: 20
+            periodSeconds: 20
+            failureThreshold: 3
+          # Gives a slow cold start room to finish without the kubelet killing
+          # it, while keeping liveness aggressive once the pod is up.
+          startupProbe:
+            tcpSocket: {port: http}
+            failureThreshold: 30
+            periodSeconds: 2
+          resources:
+            requests: {cpu: 100m, memory: 192Mi}
+            limits: {memory: 512Mi}
+          securityContext:
+            runAsNonRoot: true
+            # Matches `USER 1000:1000` in the backend Dockerfile.
+            runAsUser: 1000
+            runAsGroup: 1000
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: ['ALL']}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: api
+  namespace: news-hub
+spec:
+  selector: {app: api}
+  ports:
+    - {name: http, port: 3000, targetPort: http}
