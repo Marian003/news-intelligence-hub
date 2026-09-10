@@ -3,6 +3,9 @@
 How the News Intelligence Hub is packaged, deployed and operated on Kubernetes,
 and why the deployment is shaped the way it is.
 
+Screenshots of the running deployment are in
+[`screenshots/`](screenshots/).
+
 This document covers the **runtime and deployment** architecture. The
 **application** decisions (what the LLM is allowed to do, entity dedup, cost
 control, multi-tenancy) are documented as ADR-1 … ADR-6 in the
@@ -76,6 +79,62 @@ flowchart TB
 
 There is **no** ingress path to `/metrics`, to the worker, or to Bull Board.
 Those are reachable only inside the cluster.
+
+### Data flow: from a feed to the graph
+
+The topology above says what runs where. This says what *happens*, and it is the
+path every article takes. Note where the two process boundaries fall: the API
+never calls the LLM, and the worker never serves a request.
+
+```mermaid
+flowchart LR
+    feeds{{"RSS / Atom feeds"}}
+
+    subgraph workerProc["worker process"]
+        poll["FeedPollWorker<br/>cron */15"]
+        parse["Deterministic ingestion<br/>parse, normalize URL,<br/>content hash, dedup"]
+        filter["Pre-filter<br/>length + low-info ratio"]
+        cache{"content-hash<br/>cache hit?"}
+        llm["ONE analyzeArticle call<br/>entities, summary,<br/>importance, categories"]
+        persist["Persist markup<br/>+ entity mentions"]
+    end
+
+    subgraph apiProc["api process"]
+        graphsvc["GraphService<br/>derives nodes + edges on read"]
+        rest["REST controllers<br/>JWT, per-user scoping"]
+    end
+
+    redis[("Redis<br/>BullMQ queues")]
+    pg[("PostgreSQL<br/>articles, entities,<br/>mentions, llm_cache")]
+    provider{{"LLM provider"}}
+    web["React SPA<br/>feed / graph / entities"]
+
+    feeds -->|"fetch"| poll
+    poll -->|"enqueue article-process"| redis
+    redis -->|"consume"| parse
+    parse --> filter
+    filter -->|"junk: never calls the LLM"| pg
+    filter -->|"accepted"| cache
+    cache -->|"hit: free"| persist
+    cache -->|"miss"| llm
+    llm <-->|"metered"| provider
+    llm --> persist
+    persist --> pg
+
+    pg --> graphsvc
+    graphsvc --> rest
+    rest -->|"HTTP via Ingress"| web
+
+    classDef ext fill:#fff3cd,stroke:#b8860b,color:#000
+    classDef data fill:#e7f0ff,stroke:#3b6ea5,color:#000
+    class feeds,provider ext
+    class pg,redis data
+```
+
+The two branches out of the pre-filter and the cache are the whole cost story:
+an article only reaches `provider` if it is neither junk nor previously seen.
+See ADR-1 and ADR-3 in the [README](../README.md#architectural-decisions), and
+§4 below for what that means in numbers.
 
 ---
 
@@ -239,8 +298,11 @@ framework-free and its unit tests pure. Because the observer fires per *attempt*
 a failover records both the failure and the subsequent success, so cost is
 attributed to the provider that actually served it (see ADR-4).
 
-Logging switches to one JSON object per line when `NODE_ENV=production`. Nothing
-reads a pod's stdout with human eyes: it is scraped by a log agent, where ANSI
+Logging switches to one JSON object per line when `NODE_ENV=production`, for the
+two long-running entrypoints (`main.ts`, `worker.ts`) that a log agent actually
+scrapes. The one-shot `db-migrate` and `db-seed` Jobs keep Nest's default logger:
+they are read by a human running the deploy script, they emit a handful of lines,
+and they are gone. Nothing else reads a pod's stdout with human eyes: it is scraped by a log agent, where ANSI
 colour codes corrupt the parse and columns must be regex-matched, while a JSON
 line is indexed as-is and `context`/`level`/`trace` become queryable fields.
 Development keeps the pretty logger, because there the human *is* the consumer.

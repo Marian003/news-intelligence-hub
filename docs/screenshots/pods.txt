@@ -1,0 +1,34 @@
+# kubectl get pods -n news-hub
+# Captured 2026-09-10 13:52 UTC from the local kind cluster 'news-hub'.
+
+NAME                        READY   STATUS      RESTARTS   AGE    IP            NODE                     NOMINATED NODE   READINESS GATES
+api-b5d7dd578-fw299         1/1     Running     0          70s    10.244.0.31   news-hub-control-plane   <none>           <none>
+api-b5d7dd578-k7tkz         1/1     Running     0          56s    10.244.0.35   news-hub-control-plane   <none>           <none>
+db-migrate-czrhx            0/1     Completed   0          74s    10.244.0.30   news-hub-control-plane   <none>           <none>
+db-seed-szbfj               0/1     Completed   0          12m    10.244.0.29   news-hub-control-plane   <none>           <none>
+postgres-687fbcf69f-sph4p   1/1     Running     0          121m   10.244.0.11   news-hub-control-plane   <none>           <none>
+redis-7497f9c6c4-mgt2d      1/1     Running     0          121m   10.244.0.8    news-hub-control-plane   <none>           <none>
+web-76b4b865-7qbmm          1/1     Running     0          70s    10.244.0.32   news-hub-control-plane   <none>           <none>
+web-76b4b865-8wvlg          1/1     Running     0          58s    10.244.0.34   news-hub-control-plane   <none>           <none>
+worker-65d79c46f8-fffm2     1/1     Running     0          70s    10.244.0.33   news-hub-control-plane   <none>           <none>
+
+# kubectl get svc,ingress -n news-hub
+
+NAME               TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)    AGE
+service/api        ClusterIP   10.96.122.56    <none>        3000/TCP   121m
+service/postgres   ClusterIP   10.96.136.31    <none>        5432/TCP   121m
+service/redis      ClusterIP   10.96.219.111   <none>        6379/TCP   121m
+service/web        ClusterIP   10.96.172.191   <none>        80/TCP     121m
+
+NAME                            CLASS   HOSTS   ADDRESS     PORTS   AGE
+ingress.networking.k8s.io/api   nginx   *       localhost   80      121m
+ingress.networking.k8s.io/web   nginx   *       localhost   80      121m
+
+# kubectl get jobs,pvc -n news-hub
+
+NAME                   STATUS     COMPLETIONS   DURATION   AGE
+job.batch/db-migrate   Complete   1/1           3s         74s
+job.batch/db-seed      Complete   1/1           4s         12m
+
+NAME                                  STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS   VOLUMEATTRIBUTESCLASS   AGE
+persistentvolumeclaim/postgres-data   Bound    pvc-be3c6198-f639-41f2-9500-f845437ba631   2Gi        RWO            standard       <unset>                 121m

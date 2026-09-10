@@ -113,6 +113,7 @@ k8s/               # Kubernetes manifests (applied in filename order)
   00-namespace.yaml  10-config.yaml    # ConfigMap: non-secret config
   20-postgres.yaml   21-redis.yaml     # datastores
   30-migrate-job.yaml                  # migrations, gated before rollout
+  31-seed-job.yaml                     # demo data (run on demand, not on deploy)
   40-api.yaml  41-worker.yaml  42-web.yaml  50-ingress.yaml
   secrets.example.yaml  # template; the real secret.yaml is generated + ignored
 docs/
@@ -123,8 +124,10 @@ scripts/
   kind-up.sh         # create the kind cluster + ingress-nginx
   k8s-secret.sh      # render k8s/secret.yaml from .env (never committed)
   k8s-deploy.sh      # build -> kind load -> migrate -> roll out
+  k8s-seed.sh        # load the demo dataset into the cluster (LLM-free)
   k8s-verify.sh      # smoke test: pods, ingress routes, health, metrics
   kind-down.sh       # teardown (--all removes the cluster)
+  screenshots.mjs    # capture docs/screenshots/ from the running deployment
 docker-compose.yml   # one-command full stack
 .env.example         # every variable, commented, no real values
 ```
@@ -148,8 +151,10 @@ The same stack, deployed to a real Kubernetes cluster running locally in Docker
 via [kind](https://kind.sigs.k8s.io/). No cloud account and no paid resources:
 the only metered thing the system touches is the LLM provider API, which is
 unrelated to hosting. Manifests are in [`k8s/`](k8s/); the deployment
-architecture and its ADRs are in
-[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+architecture and its ADRs (ADR-7 to ADR-12) are in
+[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md), and screenshots of the running
+deployment - feed, entity graph, enriched article, plus `kubectl get pods`
+output - are in [`docs/screenshots/`](docs/screenshots/).
 
 **Prerequisites:** Docker (running), `kubectl`, `kind`, Node 20+, and `pnpm`
 via corepack.
@@ -169,9 +174,17 @@ bash scripts/kind-up.sh
 # 3. Build images, load them into the cluster, migrate the DB, roll out.
 #    Re-run this after any code change - it is the normal deploy loop.
 bash scripts/k8s-deploy.sh
+
+# 4. (Recommended) Load the demo dataset so the feed and graph are populated.
+#    Runs the repo's existing LLM-free seed as a Job. Idempotent.
+bash scripts/k8s-seed.sh
 ```
 
-Then open <http://localhost>.
+Then open <http://localhost> and sign in as `demo@nih.local` / `demo12345`.
+
+Seeding is deliberately a separate command, not part of `k8s-deploy.sh`: it
+drops and recreates the demo user's rows, which a routine redeploy should not do
+silently.
 
 ### Verify
 

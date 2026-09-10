@@ -1,0 +1,51 @@
+# Loads the demo dataset into the deployed cluster.
+#
+# This runs the repo's EXISTING seed entrypoint
+# (packages/backend/dist/database/seed.js) rather than a Kubernetes-specific
+# one: the seed is already synthetic, LLM-free and re-runnable (it deletes the
+# demo user, cascading its data, and recreates it under a fixed UUID so an
+# existing login session stays valid). Duplicating it here would mean two
+# datasets to keep in step.
+#
+# Not part of scripts/k8s-deploy.sh: seeding wipes and rewrites the demo user's
+# rows, which is not something a routine redeploy should do silently. Run it
+# explicitly with scripts/k8s-seed.sh.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: db-seed
+  namespace: news-hub
+spec:
+  backoffLimit: 3
+  template:
+    metadata:
+      labels: {app: db-seed}
+    spec:
+      restartPolicy: OnFailure
+      initContainers:
+        - name: wait-for-postgres
+          image: postgres:16-alpine
+          command:
+            - sh
+            - -c
+            - 'until pg_isready -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER"; do echo "waiting for postgres"; sleep 2; done'
+          envFrom:
+            - configMapRef: {name: app-config}
+      containers:
+        - name: seed
+          image: news-hub/api:local
+          imagePullPolicy: IfNotPresent
+          command: ['node', 'packages/backend/dist/database/seed.js']
+          envFrom:
+            - configMapRef: {name: app-config}
+            - secretRef: {name: app-secrets}
+          resources:
+            requests: {cpu: 50m, memory: 128Mi}
+            limits: {memory: 512Mi}
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: ['ALL']}
