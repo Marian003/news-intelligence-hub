@@ -66,6 +66,10 @@ export const envSchema = z
     // How many jobs a worker processes concurrently.
     WORKER_CONCURRENCY: z.coerce.number().int().positive().default(2),
 
+    // Port the worker serves /metrics and /healthz on. The API serves its own
+    // metrics on BACKEND_PORT via a controller, so this is worker-only.
+    METRICS_PORT: z.coerce.number().int().positive().default(9091),
+
     BULLBOARD_PORT: z.coerce.number().int().positive().default(3100),
     BULLBOARD_USER: z.string().min(1).default('admin'),
     BULLBOARD_PASSWORD: z.string().min(1, 'BULLBOARD_PASSWORD must be set'),

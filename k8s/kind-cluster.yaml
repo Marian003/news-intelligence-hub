@@ -1,0 +1,28 @@
+# kind cluster for the News Intelligence Hub.
+#
+# Single node: this is a local portfolio/demo cluster, and a multi-node kind
+# setup would only add scheduling latency without exercising anything the
+# manifests do differently.
+#
+# The node is labelled `ingress-ready` because that is the nodeSelector the
+# upstream ingress-nginx "kind" manifest targets, and its :80/:443 are mapped
+# straight onto the host so http://localhost reaches the Ingress with no
+# port-forward or tunnel running in a spare terminal.
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: news-hub
+nodes:
+  - role: control-plane
+    kubeadmConfigPatches:
+      - |
+        kind: InitConfiguration
+        nodeRegistration:
+          kubeletExtraArgs:
+            node-labels: "ingress-ready=true"
+    extraPortMappings:
+      - containerPort: 80
+        hostPort: 80
+        protocol: TCP
+      - containerPort: 443
+        hostPort: 443
+        protocol: TCP

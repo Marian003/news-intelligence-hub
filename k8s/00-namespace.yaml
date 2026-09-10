@@ -1,0 +1,9 @@
+# Everything the app owns lives in one namespace, so `kubectl delete namespace
+# news-hub` is a complete, reliable teardown of the workload without touching
+# the ingress controller in ingress-nginx.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: news-hub
+  labels:
+    app.kubernetes.io/part-of: news-intelligence-hub

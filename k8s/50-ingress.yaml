@@ -1,0 +1,56 @@
+# Single entry point on http://localhost (kind maps the node's :80 to the host).
+#
+# TWO Ingress resources, not one, and that is deliberate: the
+# `rewrite-target` annotation applies to every path in the resource it is set
+# on. Putting the SPA's `/` rule in the same object as the rewritten `/api`
+# rule would rewrite the SPA's paths too - against a capture group that does
+# not exist there - and serve blank pages. Splitting them keeps each rule's
+# rewriting behaviour independent.
+#
+# The API is mounted under /api even though the backend's own routes are at the
+# root (/health, /articles, ...). That is what the rewrite below is for: it
+# strips the prefix so the backend still sees /health. Same-origin routing like
+# this means the browser makes no cross-origin calls, so CORS and third-party
+# cookie behaviour stop mattering in the deployed setup.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: api
+  namespace: news-hub
+  annotations:
+    # $2 is the second capture group of the path regex: everything after /api.
+    # `/api/health` -> `/health`, and a bare `/api` -> `/`.
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+    nginx.ingress.kubernetes.io/use-regex: 'true'
+spec:
+  ingressClassName: nginx
+  rules:
+    - http:
+        paths:
+          - path: /api(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: api
+                port: {name: http}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: web
+  namespace: news-hub
+spec:
+  ingressClassName: nginx
+  rules:
+    - http:
+        paths:
+          # Catch-all. nginx-ingress matches the most specific path first, so
+          # /api is still routed to the API despite this rule covering it.
+          # Client-side routes (/graph, /feeds) land here and nginx's
+          # try_files fallback inside the pod serves index.html.
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: web
+                port: {name: http}

@@ -1,0 +1,52 @@
+# Non-secret configuration. Split from the Secret deliberately: these values are
+# safe in git, and keeping them here means the generated Secret contains only
+# things that actually need protecting - which makes it obvious when a real
+# credential leaks into a diff.
+#
+# The service names below (postgres, redis) are the in-cluster DNS names of the
+# Services in 20-postgres.yaml / 21-redis.yaml.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  namespace: news-hub
+data:
+  NODE_ENV: 'production'
+  BACKEND_PORT: '3000'
+  # Public origin of the SPA, used to build user-facing links (e.g. the
+  # dev-mode confirmation link). Behind the Ingress the SPA is at the root.
+  APP_PUBLIC_URL: 'http://localhost'
+
+  POSTGRES_HOST: 'postgres'
+  POSTGRES_PORT: '5432'
+  POSTGRES_DB: 'news_hub'
+  POSTGRES_USER: 'news_hub'
+
+  REDIS_HOST: 'redis'
+  REDIS_PORT: '6379'
+
+  JWT_EXPIRES_IN: '1h'
+
+  LLM_PROVIDER: 'anthropic'
+  LLM_MAX_TOKENS: '1024'
+  LLM_TIMEOUT_MS: '30000'
+  LLM_MAX_RETRIES: '2'
+  OPENAI_MODEL: 'gpt-4o-mini'
+  OPENAI_BASE_URL: 'https://api.openai.com'
+  ANTHROPIC_MODEL: 'claude-haiku-4-5-20251001'
+  ANTHROPIC_BASE_URL: 'https://api.anthropic.com'
+
+  PREFILTER_MIN_CHARS: '200'
+  PREFILTER_MIN_WORDS: '40'
+  LLM_ENTITY_MATCHING: 'false'
+  ENTITY_MATCH_MAX_CANDIDATES: '20'
+
+  FEED_POLL_CRON: '*/15 * * * *'
+  FEED_FETCH_TIMEOUT_MS: '15000'
+  WORKER_CONCURRENCY: '2'
+
+  # Worker-only scrape port (the API serves /metrics on BACKEND_PORT).
+  METRICS_PORT: '9091'
+
+  BULLBOARD_PORT: '3100'
+  BULLBOARD_USER: 'admin'

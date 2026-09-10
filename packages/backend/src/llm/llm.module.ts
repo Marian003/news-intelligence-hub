@@ -1,5 +1,6 @@
 import {Global, Module, type Provider} from '@nestjs/common';
 import {ConfigService} from '@nestjs/config';
+import {MetricsService} from '../observability/metrics.service';
 import {createResilientLlmService} from './llm.factory';
 import type {LlmService} from './llm.types';
 
@@ -8,8 +9,8 @@ export const LLM_SERVICE = Symbol('LLM_SERVICE');
 
 const llmProvider: Provider = {
   provide: LLM_SERVICE,
-  inject: [ConfigService],
-  useFactory: (config: ConfigService): LlmService =>
+  inject: [ConfigService, MetricsService],
+  useFactory: (config: ConfigService, metrics: MetricsService): LlmService =>
     createResilientLlmService({
       provider: config.getOrThrow<'openai' | 'anthropic'>('LLM_PROVIDER'),
       timeoutMs: config.getOrThrow<number>('LLM_TIMEOUT_MS'),
@@ -23,6 +24,7 @@ const llmProvider: Provider = {
         model: config.getOrThrow<string>('ANTHROPIC_MODEL'),
         baseUrl: config.getOrThrow<string>('ANTHROPIC_BASE_URL'),
       },
+      onCall: (provider, outcome) => metrics.llmCalls.inc({provider, outcome}),
     }),
 };
 

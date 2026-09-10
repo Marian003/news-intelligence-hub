@@ -14,6 +14,7 @@ import {QueueModule} from './queue/queue.module';
 import {RegenerationModule} from './regeneration/regeneration.module';
 import {RedisModule} from './redis/redis.module';
 import {HealthModule} from './health/health.module';
+import {ObservabilityModule} from './observability/observability.module';
 import {TelemetryModule} from './telemetry/telemetry.module';
 
 /**
@@ -27,6 +28,7 @@ import {TelemetryModule} from './telemetry/telemetry.module';
     DatabaseModule,
     RedisModule,
     QueueModule,
+    ObservabilityModule,
     HealthModule,
     AuthModule,
     FeedsModule,

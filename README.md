@@ -103,12 +103,28 @@ packages/
       auth/        feeds/  articles/  entities/  categories/  axes/
       graph/       regeneration/  digests/  telemetry/  processing/
       ingestion/   llm/  workers/  queue/  config/
+      observability/ # JSON logger + Prometheus metrics (API and worker)
       database/    # schema, migrations, seed
   frontend/        # React + Vite + Tailwind SPA
     src/pages/     # Feed, Graph, Entities, Digests, Telemetry, Feeds,
                    # Settings, Auth
+k8s/               # Kubernetes manifests (applied in filename order)
+  kind-cluster.yaml     # local cluster: ingress-ready, node :80 -> host :80
+  00-namespace.yaml  10-config.yaml    # ConfigMap: non-secret config
+  20-postgres.yaml   21-redis.yaml     # datastores
+  30-migrate-job.yaml                  # migrations, gated before rollout
+  40-api.yaml  41-worker.yaml  42-web.yaml  50-ingress.yaml
+  secrets.example.yaml  # template; the real secret.yaml is generated + ignored
+docs/
+  ARCHITECTURE.md    # deployment diagram, ADR-7..12, cost/scale, failure modes
 scripts/
   check-unicode.mjs  # fails the build on non-printing Unicode (wired into lint)
+  env-init.sh        # generate .env with random secrets (idempotent)
+  kind-up.sh         # create the kind cluster + ingress-nginx
+  k8s-secret.sh      # render k8s/secret.yaml from .env (never committed)
+  k8s-deploy.sh      # build -> kind load -> migrate -> roll out
+  k8s-verify.sh      # smoke test: pods, ingress routes, health, metrics
+  kind-down.sh       # teardown (--all removes the cluster)
 docker-compose.yml   # one-command full stack
 .env.example         # every variable, commented, no real values
 ```
@@ -126,7 +142,114 @@ Configuration is entirely via environment variables — token limits, polling
 cron, model names, worker concurrency, pre-filter thresholds, ports, and secrets
 are all in `.env` (see `.env.example`). No operational config is hardcoded.
 
+## Kubernetes deployment (local, free)
+
+The same stack, deployed to a real Kubernetes cluster running locally in Docker
+via [kind](https://kind.sigs.k8s.io/). No cloud account and no paid resources:
+the only metered thing the system touches is the LLM provider API, which is
+unrelated to hosting. Manifests are in [`k8s/`](k8s/); the deployment
+architecture and its ADRs are in
+[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+
+**Prerequisites:** Docker (running), `kubectl`, `kind`, Node 20+, and `pnpm`
+via corepack.
+
+### Run it
+
+```bash
+# 1. Configure. Generates .env with strong random values for the three secrets
+#    that have no default. Idempotent - an existing .env is left untouched.
+bash scripts/env-init.sh
+#    To process real feeds, add ANTHROPIC_API_KEY (or OPENAI_API_KEY) to .env.
+
+# 2. Create the kind cluster 'news-hub' and install ingress-nginx.
+#    The cluster maps its node's :80 onto the host, so no port-forward is needed.
+bash scripts/kind-up.sh
+
+# 3. Build images, load them into the cluster, migrate the DB, roll out.
+#    Re-run this after any code change - it is the normal deploy loop.
+bash scripts/k8s-deploy.sh
+```
+
+Then open <http://localhost>.
+
+### Verify
+
+```bash
+bash scripts/k8s-verify.sh
+```
+
+Or by hand:
+
+```bash
+kubectl --context kind-news-hub -n news-hub get pods
+curl http://localhost/api/health     # {"status":"ok","checks":{...}}
+curl -I http://localhost/            # 200, the SPA
+```
+
+### Tear down
+
+```bash
+bash scripts/kind-down.sh            # delete the app, keep the cluster
+bash scripts/kind-down.sh --all      # delete the whole cluster, free host :80
+```
+
+Deleting the namespace also deletes the PVC, so Postgres data is discarded.
+
+### What runs in the cluster
+
+| Workload | Kind | Replicas | Image |
+|---|---|---|---|
+| `web` | Deployment + Service | 2 | `news-hub/web:local` (nginx + built SPA) |
+| `api` | Deployment + Service | 2 | `news-hub/api:local` |
+| `worker` | Deployment | 1 | `news-hub/api:local`, different command |
+| `db-migrate` | Job | - | `news-hub/api:local`, runs once per deploy |
+| `postgres` | Deployment + Service + PVC | 1 | `postgres:16-alpine` |
+| `redis` | Deployment + Service | 1 | `redis:7-alpine` |
+
+Ingress routes `/` to the SPA and `/api/*` to the API, stripping the `/api`
+prefix (the backend's own routes are at the root). The SPA is built with
+`VITE_API_URL=/api`, so the browser makes same-origin calls only.
+
+### Secrets
+
+`.env` and the rendered `k8s/secret.yaml` are both git-ignored and never
+committed. `scripts/k8s-secret.sh` renders the Secret from `.env`, copying only
+the five sensitive keys - everything else lives in the committed, non-secret
+ConfigMap `k8s/10-config.yaml`. The tracked template is
+[`k8s/secrets.example.yaml`](k8s/secrets.example.yaml). The generator refuses to
+run if `k8s/secret.yaml` has somehow become tracked by git.
+
+### Observability
+
+Both the API and the worker expose Prometheus metrics, and both carry
+`prometheus.io/scrape` annotations, so adding Prometheus + Grafana later needs
+no manifest change (see `docs/ARCHITECTURE.md` §6):
+
+```bash
+K="kubectl --context kind-news-hub -n news-hub"
+
+# API metrics (in-cluster only - deliberately not routed through the ingress)
+$K exec deploy/api -- node -e "fetch('http://localhost:3000/metrics').then(r=>r.text()).then(console.log)"
+
+# Worker metrics, on its own port
+$K exec deploy/worker -- node -e "fetch('http://localhost:9091/metrics').then(r=>r.text()).then(console.log)"
+
+# Structured JSON logs (NODE_ENV=production emits one JSON object per line)
+$K logs deploy/worker --tail=20
+```
+
+Exported: `http_request_duration_seconds` (labelled by matched route),
+`llm_calls_total{provider,outcome}`, `bullmq_queue_jobs{queue,state}`, and the
+standard Node process metrics.
+
 ## Architectural Decisions
+
+ADR-1 to ADR-6 below cover the *application* decisions. The *deployment*
+decisions (ADR-7 to ADR-12: the web/worker split, in-cluster vs managed
+Postgres, readiness vs liveness semantics, same-origin ingress routing,
+per-process observability, and migrations as a gating Job) are in
+[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
 ### ADR-1: Deterministic code vs the LLM
 **Context.** The central principle: the LLM is a surgical instrument, not the

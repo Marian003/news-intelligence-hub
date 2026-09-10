@@ -1,0 +1,46 @@
+# Schema migrations as a Job, mirroring the compose `migrate` service.
+#
+# Migrations run exactly once per deploy, in their own short-lived pod, rather
+# than on API startup. With more than one API replica, migrate-on-boot means N
+# replicas racing to apply the same DDL; a Job makes the ordering explicit and
+# gives a real exit code to gate the rollout on.
+#
+# The Job name carries no hash, so re-running the deploy script replaces it -
+# the script deletes the previous Job first, because a completed Job's pod
+# template is immutable.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: db-migrate
+  namespace: news-hub
+spec:
+  # Drizzle's migrator is idempotent (it tracks applied files), so retrying a
+  # transient failure - e.g. postgres still finishing initdb - is safe.
+  backoffLimit: 6
+  template:
+    metadata:
+      labels: {app: db-migrate}
+    spec:
+      restartPolicy: OnFailure
+      # Do not even start the migrator until postgres answers, so the common
+      # cold-start case is a clean wait rather than a crash-and-retry loop.
+      initContainers:
+        - name: wait-for-postgres
+          image: postgres:16-alpine
+          command:
+            - sh
+            - -c
+            - 'until pg_isready -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER"; do echo "waiting for postgres"; sleep 2; done'
+          envFrom:
+            - configMapRef: {name: app-config}
+      containers:
+        - name: migrate
+          image: news-hub/api:local
+          imagePullPolicy: IfNotPresent
+          command: ['node', 'packages/backend/dist/database/migrate.js']
+          envFrom:
+            - configMapRef: {name: app-config}
+            - secretRef: {name: app-secrets}
+          resources:
+            requests: {cpu: 50m, memory: 128Mi}
+            limits: {memory: 512Mi}
