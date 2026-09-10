@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build, test and format check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      # No version pinned here on purpose: action-setup reads the
+      # "packageManager" field from package.json (pnpm@10.33.0).
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Set up Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Root "build" is `pnpm -r build`, which type-checks every package:
+      # shared and backend run `tsc -b`, frontend runs `tsc --noEmit && vite build`.
+      - name: Type-check and build
+        run: pnpm build
+
+      # Root "test" is `pnpm -r --if-present test` (backend: `vitest run`).
+      # The suite is LLM-free, so no secrets or services are required.
+      - name: Run tests
+        run: pnpm test
+
+      # prettier ships as a transitive dependency of gts and is not linked into
+      # node_modules/.bin under pnpm's isolated layout, so `pnpm exec prettier`
+      # cannot find it. dlx pins the same version gts resolves (3.2.5) and still
+      # picks up .prettierrc.js at the repo root.
+      #
+      # Scoped to package sources: a repo-wide check would also flag generated
+      # drizzle migration snapshots and docs that were never prettier-formatted.
+      #
+      # `pnpm lint` is deliberately not run here: gts lint is broken by
+      # peer-plugin isolation under pnpm.
+      - name: Check formatting
+        run: pnpm dlx prettier@3.2.5 --check "packages/*/src/**/*.{ts,tsx}"
