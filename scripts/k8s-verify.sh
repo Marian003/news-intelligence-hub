@@ -47,6 +47,33 @@ check "GET /graph (SPA fallback)" "200" "$deep"
 guarded=$(curl -s -o /dev/null -w '%{http_code}' http://localhost/api/feeds)
 check "GET /api/feeds (auth guard reached)" "401" "$guarded"
 
+
+# The SPA's API base URL is baked into the bundle at build time. curl against
+# the Ingress cannot catch a wrong one (curl never executes the JS), so assert
+# on the bundle itself: it must call the relative /api, and must contain
+# neither the dev fallback nor an MSYS-mangled Windows path.
+echo
+echo "== SPA bundle base URL =="
+bundle_path=$(curl -s http://localhost/ | grep -o '/assets/index-[^"]*\.js' | head -1)
+if [ -z "$bundle_path" ]; then
+  echo "  FAIL  could not find the bundle in index.html"
+  fail=1
+else
+  bundle=$(curl -s "http://localhost${bundle_path}")
+  if printf '%s' "$bundle" | grep -q 'Program Files'; then
+    echo "  FAIL  bundle contains an MSYS-mangled path (rebuild with MSYS_NO_PATHCONV=1)"
+    fail=1
+  else
+    echo "  PASS  no MSYS-mangled path in $bundle_path"
+  fi
+  if printf '%s' "$bundle" | grep -q 'localhost:3000'; then
+    echo "  FAIL  bundle contains the dev fallback http://localhost:3000"
+    fail=1
+  else
+    echo "  PASS  no dev fallback baked into the bundle"
+  fi
+fi
+
 echo
 echo "== Health payload =="
 curl -s http://localhost/api/health; echo

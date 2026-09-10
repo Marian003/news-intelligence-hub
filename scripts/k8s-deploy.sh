@@ -24,7 +24,14 @@ docker build -f packages/backend/Dockerfile -t "$API_IMAGE" .
 # VITE_API_URL is baked into the bundle at build time. '/api' (relative) makes
 # the browser call the same origin it loaded the page from, which is what the
 # Ingress routes - so no CORS and no hardcoded hostname.
-docker build -f packages/frontend/Dockerfile \
+#
+# MSYS_NO_PATHCONV=1 is required on Git Bash for Windows: MSYS rewrites any
+# argument that looks like a Unix absolute path into a Windows one, silently
+# turning `/api` into `C:/Program Files/Git/api`. That still builds and still
+# serves the SPA, but every fetch from the browser then targets a file:// URL
+# and fails - a failure invisible to `curl` against the Ingress, because curl
+# never executes the bundle. It is a harmless no-op on macOS/Linux.
+MSYS_NO_PATHCONV=1 docker build -f packages/frontend/Dockerfile \
   --build-arg VITE_API_URL=/api -t "$WEB_IMAGE" .
 
 echo "[deploy] 2/6 Loading images into the kind node..."

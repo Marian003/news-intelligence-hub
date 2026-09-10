@@ -8,6 +8,11 @@ build/
 
 # Local environment — secrets live here, never committed
 .env
+# Any per-environment variant (.env.local, .env.production, ...). The negation
+# keeps the committed template tracked - without it, .env.* would swallow the
+# one file in this family that MUST stay in git.
+.env.*
+!.env.example
 *.local
 # Rendered Kubernetes Secret (contains real keys) — only the example is tracked
 k8s/secret.yaml
